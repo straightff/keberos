@@ -34,122 +34,141 @@ public class ServerAuthThread implements Runnable {
     @Override
     public void run() {
         String pack = null;
-        try {
-            pack = AuthAndPacked();
-            writeAuthMess(pack);
+
+//            pack = AuthAndPacked();
 
 
-            if (mode.equals(KbConstants.C_V)) {
-
-                String finalPack = pack;
-                Platform.runLater(()->server.getLoglist().add("Vserver-->C:" + finalPack));
-            }
-            else {
-                while (true) {
-                    try {
-                        final String mess = br.readLine();
-                        Platform.runLater(() -> server.getLoglist().add(mess));
-                        server.writeToAll(mess);
-                    } catch (IOException e) {
-                        Platform.runLater(() -> server.getLoglist().add("error read"));
-                        e.printStackTrace();
-                    }
+            //认证消息处理
+//            if (mode.equals(KbConstants.C_V)) {
+//                writeAuthMess(pack);
+//                String finalPack = pack;
+//                Platform.runLater(() -> server.getLoglist().add("Vserver-->C:" + finalPack));
+//            }
+            //聊天消息处理
+//            if (mode.equals(KbConstants.C_V_CHAT)) {
+        System.out.println("begin");
+            while (true) {
+               /* System.out.println("chat begin!");
+                try {
+                    final String mess = br.readLine();
+                    Platform.runLater(() -> server.getLoglist().add(mess));
+                    server.writeToAll(mess);
+                } catch (IOException e) {
+                    Platform.runLater(() -> server.getLoglist().add("error read"));
+                    e.printStackTrace();
+                }*/
+                try {
+                    AuthAndPacked();
+                } catch (Exception e) {
+                    Platform.runLater(()-> server.getLoglist().add("error read"));
+                    e.printStackTrace();
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    //计算时间戳的时间差
-    public static int caculateTS(String TS1, String TS2) {
-
-        SimpleDateFormat df = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
-        Date TSDATE1 = null;
-        Date TSDATE2 = null;
-        try {
-            TSDATE1 = df.parse(TS1);
-            TSDATE2 = df.parse(TS2);
-        } catch (Exception e) {
-            // 日期型字符串格式错误
+//            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
         }
 
-        int nDay = (int) ((TSDATE2.getTime() - TSDATE1.getTime()));
-        return nDay;
-    }
+        //计算时间戳的时间差
+        public static int caculateTS (String TS1, String TS2){
 
+            SimpleDateFormat df = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
+            Date TSDATE1 = null;
+            Date TSDATE2 = null;
+            try {
+                TSDATE1 = df.parse(TS1);
+                TSDATE2 = df.parse(TS2);
+            } catch (Exception e) {
+                // 日期型字符串格式错误
+            }
 
-    //验证及打包
-    public String AuthAndPacked() throws Exception {
-        //收包
-        SqliteTool sql = new SqliteTool("ServerMess");
-
-        String Vkey = sql.searchOneFromTable(VServerUI.getVserverId(), "ServerRegist", "KEY");
-        String recvPackEncode = recvAuthMess();
-
-        String[] clientMess = unPack(recvPackEncode);
-        Platform.runLater(()->server.getLoglist().add("C-->Vserver：" + recvPackEncode));
-
-        System.out.println("clientMess:");
-        for (String mess : clientMess) {
-            System.out.println(mess);
+            int nDay = (int) ((TSDATE2.getTime() - TSDATE1.getTime()));
+            return nDay;
         }
 
-        String[] ticket = unPack(DesTool.decrypt(clientMess[1], Vkey));
-        System.out.println("ticket package");
-        for (String s : ticket) {
-            System.out.println(s);
+
+        //验证及打包
+        public void AuthAndPacked () throws Exception {
+            //收包
+            String recvPackEncode = recvAuthMess();
+            String[] clientMess = unPack(recvPackEncode);
+            //获取头部，来判断VServer的应用方式
+            mode = clientMess[0];
+            String packEncode; //要返回的包
+            System.out.println("mode is "+mode);
+            if (mode.equals(KbConstants.C_V)) {
+                SqliteTool sql = new SqliteTool("ServerMess");
+
+                String Vkey = sql.searchOneFromTable(VServerUI.getVserverId(), "ServerRegist", "KEY");
+
+                Platform.runLater(() -> server.getLoglist().add("C-->Vserver：" + recvPackEncode));
+
+                System.out.println("clientMess:");
+                for (String mess : clientMess) {
+                    System.out.println(mess);
+                }
+
+                String[] ticket = unPack(DesTool.decrypt(clientMess[1], Vkey));
+                System.out.println("ticket package");
+                for (String s : ticket) {
+                    System.out.println(s);
+                }
+
+                String Kcv = ticket[0];
+                System.out.println("kcv:" + Kcv);
+                String[] Auth = unPack(DesTool.decrypt(clientMess[2], Kcv));
+
+                System.out.println("Auth package");
+                for (String s : Auth) {
+                    System.out.println(s);
+                }
+                //发包
+                String packContent = Auth[2] + 1;
+                packEncode = DesTool.encrypt(packContent, Kcv);
+                writeAuthMess(packEncode);
+                String finalPack = packEncode;
+                Platform.runLater(() -> server.getLoglist().add("Vserver-->C:" + finalPack));
+                //todo 验证过程
+            }
+            //mode = KbContains.C_V_chat
+            else {
+                packEncode = clientMess[1];
+//            final String mess = br.readLine();
+                Platform.runLater(() -> server.getLoglist().add(packEncode));
+                server.writeToAll(packEncode);
+
+//            return packEncode;
+            }
         }
 
-        String Kcv = ticket[0];
-        System.out.println("kcv:"+Kcv);
-        String[] Auth = unPack(DesTool.decrypt(clientMess[2], Kcv));
-
-        System.out.println("Auth package");
-        for (String s : Auth) {
-            System.out.println(s);
+        //写认证消息
+        public void writeAuthMess (String input) throws IOException {
+            os.write((input + "=" + "\n").getBytes());
+            os.flush();
         }
 
-        //获取头部，来判断VServer的应用方式
-        mode = clientMess[0];
-
-        //todo 验证过程
-
-        //发包
-        String packContent = Auth[2] + 1;
-        String packEncode = DesTool.encrypt(packContent, Kcv);
-
-
-        return packEncode;
-    }
-
-    //写认证消息
-    public void writeAuthMess(String input) throws IOException {
-        os.write((input + "=" + "\n").getBytes());
-        os.flush();
-    }
-
-    //接收验证消息
-    public String recvAuthMess() throws IOException {
-        StringBuilder req = new StringBuilder();
-        String mess = "";
-        while (!(mess = br.readLine()).endsWith("=")) {
-            req.append(mess);
-        }
+        //接收验证消息
+        public String recvAuthMess () throws IOException {
+            StringBuilder req = new StringBuilder();
+            String mess = "";
+            while (!(mess = br.readLine()).endsWith("=")) {
+                req.append(mess);
+            }
 //		System.out.println("get there!");
-        req.append(mess).deleteCharAt(req.length() - 1);
-        return req.toString();
-    }
+            req.append(mess).deleteCharAt(req.length() - 1);
+            return req.toString();
+        }
 
-    //写聊天消息
-    public void writeMessage(String input) throws IOException {
-        os.write((input + "\n").getBytes(StandardCharsets.UTF_8));
-        os.flush();
-    }
+        //写聊天消息
+        public void writeMessage (String input) throws IOException {
+            os.write((input + "\n").getBytes(StandardCharsets.UTF_8));
+            os.flush();
+        }
 
-    public String[] unPack(String pack) {
-        String[] temp = new String[10];
-        temp = pack.split("-");
-        return temp;
+        public String[] unPack (String pack){
+            String[] temp = new String[10];
+            temp = pack.split("-");
+            return temp;
+        }
     }
-}

@@ -21,9 +21,10 @@ public class ClientThread implements Runnable {
     //	private InputStream is;
     private OutputStream os;
     private BufferedReader br;
-    //	private BufferedWriter bw;
+    //	private BufferedWriter
     private String name;
     public ObservableList<String> messList;
+    public ObservableList<String> loglist;
     private int mode;
 
     // 读消息
@@ -42,13 +43,10 @@ public class ClientThread implements Runnable {
             // TGS
 
         } else {
-            System.out.println("cut");
             while (true) {
                 try {
                     final String mess = br.readLine();
-
                     Platform.runLater(() -> messList.add(mess));
-
                 } catch (SocketException e) {
                     Platform.runLater(() -> messList.add("ERROR!"));
                     break;
@@ -67,8 +65,10 @@ public class ClientThread implements Runnable {
 
         br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         os = socket.getOutputStream();
-        messList = FXCollections.observableArrayList();
+        messList = FXCollections.observableArrayList();//消息列表
+        loglist = FXCollections.observableArrayList();//log列表
         this.name = name;
+        this.mode = mode;
     }
 
     public ClientThread(String hostName, int port, int mode) throws UnknownHostException, IOException {
@@ -77,7 +77,8 @@ public class ClientThread implements Runnable {
 
         br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         os = socket.getOutputStream();
-        messList = FXCollections.observableArrayList();
+        messList = FXCollections.observableArrayList();//消息列表
+        loglist = FXCollections.observableArrayList();//log列表
         this.mode = mode;
     }
 
@@ -86,19 +87,19 @@ public class ClientThread implements Runnable {
         //发包
         String send_pack = KbConstants.C_AS_regist + KbConstants.SEP + ClientApplication.getClient_ID() + KbConstants.SEP + ClientApplication.getTgsId()
                 + KbConstants.SEP + ClientApplication.getTimeStamp() + KbConstants.SEP + ClientApplication.getHashKey(); // 将要发送的数据包
-        writeAuthMess(send_pack,os);
+        writeAuthMess(send_pack, os);
         try {
             String recvPackEncode = recvAuthMess(br);
             String recvPack = DesTool.decrypt(recvPackEncode, ClientApplication.getHashKey());
-            System.out.println("recvPack is"+recvPack);
+            System.out.println("recvPack is" + recvPack);
 
             String[] clientMess = recvPack.split("-");
-            for (String a:clientMess) {
+            for (String a : clientMess) {
                 System.out.println(a);
             }
             //存储tgsTicket
             ClientApplication.setTgsTicket(clientMess[6]);
-            ClientApplication.getLoglist().add("Tgs TGT:"+clientMess[6]);
+            ClientApplication.getLoglist().add("Tgs TGT:" + clientMess[6]);
 
             //存储c_tgs
             ClientApplication.setKctgs(clientMess[1]);
@@ -116,7 +117,8 @@ public class ClientThread implements Runnable {
     // TGS 认证过程 得到ticketV
     private void TGS_auth() throws Exception {
 
-        Socket TGSsocket = new Socket("localhost",7777);
+        //建立与TGS的socket连接
+        Socket TGSsocket = new Socket("localhost", 7777);
         OutputStream TGSos = TGSsocket.getOutputStream();
 
         BufferedReader TGSbr = new BufferedReader(new InputStreamReader(TGSsocket.getInputStream()));
@@ -129,22 +131,20 @@ public class ClientThread implements Runnable {
         System.out.println(ClientApplication.getKctgs());
         String Auth_encoded = DesTool.encrypt(Auth, ClientApplication.getKctgs());
         String pack = KbConstants.C_TGS + KbConstants.SEP + ClientApplication.getVserverId() + KbConstants.SEP
-                + ClientApplication.getTgsTicket() + KbConstants.SEP + Auth_encoded+KbConstants.SEP+ClientApplication.getKctgs();
+                + ClientApplication.getTgsTicket() + KbConstants.SEP + Auth_encoded + KbConstants.SEP + ClientApplication.getKctgs();
 
         //由于加密函数没有在后面添加结束标志位，因此，在这里添加 ‘=’ 作为包结束的标志
-        writeAuthMess(pack,TGSos);
-        Platform.runLater(() -> ClientApplication.getLoglist().add("C-->TGS:"+pack));
-
-
+        writeAuthMess(pack, TGSos);
+        Platform.runLater(() -> ClientApplication.getLoglist().add("C-->TGS:" + pack));
 
 
         //收包
         String recvPackEncode = recvAuthMess(TGSbr);
-        Platform.runLater(() ->ClientApplication.getLoglist().add("收到来自TGS的包"));
+        Platform.runLater(() -> ClientApplication.getLoglist().add("收到来自TGS的包"));
 
 
         //解密
-        String recvPack = DesTool.decrypt(recvPackEncode,ClientApplication.getKctgs());
+        String recvPack = DesTool.decrypt(recvPackEncode, ClientApplication.getKctgs());
 
         //解包
         String[] clientMess = unPack(recvPack);
@@ -156,7 +156,7 @@ public class ClientThread implements Runnable {
         ClientApplication.setVTicket(ticketV);
         ClientApplication.setKcv(Kcv);
         //todo 添加到client的loglist
-        Platform.runLater(() -> ClientApplication.getLoglist().add("ticketV:"+ticketV));
+        Platform.runLater(() -> ClientApplication.getLoglist().add("ticketV:" + ticketV));
         TGSos.close();
         TGSbr.close();
 
@@ -165,31 +165,30 @@ public class ClientThread implements Runnable {
 
     private void VServer_auth() throws Exception {
 
-        Socket Vsocket = new Socket("localhost",8888);
+        //建立与server的socket连接
+        Socket Vsocket = new Socket("localhost", 8888);
         OutputStream VSos = Vsocket.getOutputStream();
         BufferedReader Vbr = new BufferedReader(new InputStreamReader(Vsocket.getInputStream()));
-        //发包
 
+        //发包
         String Kcv = ClientApplication.getKcv();
 
         String TS = ClientApplication.getTimeStamp();
-        String AuthContent = ClientApplication.getClient_ID()+KbConstants.SEP+socket.getLocalAddress().toString()+KbConstants.SEP+TS;
-        String AuthEncode = DesTool.encrypt(AuthContent,Kcv);
-        String pack = KbConstants.C_V+KbConstants.SEP+ClientApplication.getVTicket()+KbConstants.SEP+AuthEncode;
-        writeAuthMess(pack,VSos);
-
+        String AuthContent = ClientApplication.getClient_ID() + KbConstants.SEP + socket.getLocalAddress().toString() + KbConstants.SEP + TS;
+        String AuthEncode = DesTool.encrypt(AuthContent, Kcv);
+        String pack = KbConstants.C_V + KbConstants.SEP + ClientApplication.getVTicket() + KbConstants.SEP + AuthEncode;
+        writeAuthMess(pack, VSos);
 
 
         //收包
         String recvPackEncode = recvAuthMess(Vbr);
-        Platform.runLater(() -> ClientApplication.getLoglist().add("V-->C:"+recvPackEncode));
+        Platform.runLater(() -> ClientApplication.getLoglist().add("V-->C:" + recvPackEncode));
 
 
-        String recvPack = DesTool.decrypt(recvPackEncode,ClientApplication.getKcv());
+        String recvPack = DesTool.decrypt(recvPackEncode, ClientApplication.getKcv());
         String[] clientMess = unPack(recvPack);
 
-        if(clientMess[1].equals(TS+1))
-        {
+        if (clientMess[1].equals(TS + 1)) {
 
         }
         VSos.close();
@@ -208,30 +207,31 @@ public class ClientThread implements Runnable {
         return req.toString();
     }
 
-    public void writeAuthMess(String input,OutputStream os1) throws IOException {
+    public void writeAuthMess(String input, OutputStream os1) throws IOException {
         os1.write((input + "=" + "\n").getBytes(StandardCharsets.UTF_8));
         os1.flush();
     }
 
     // 写聊天消息
     public void writeMessage(String input) throws IOException {
-        os.write(("client-" + name + "says-" + input + "\n").getBytes(StandardCharsets.UTF_8));
+//        os.write((KbConstants.C_V_CHAT+"client-" + name + "-says-" + input + "\n").getBytes(StandardCharsets.UTF_8));
+        os.write((KbConstants.C_V_CHAT + KbConstants.SEP + input + "=" + "\n").getBytes(StandardCharsets.UTF_8));
         os.flush();
+
     }
 
     public ObservableList<String> getMessList() {
         return messList;
     }
 
-    public String[] unPack(String pack)
-    {
+    public String[] unPack(String pack) {
         String[] temp = new String[10];
         temp = pack.split("-");
         return temp;
     }
+
     //判断数据库中是否存在
-    public boolean isAlreadExist(String input)
-    {
+    public boolean isAlreadExist(String input) {
         return false;
     }
 }

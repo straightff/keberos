@@ -18,20 +18,20 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
-import javafx.scene.control.Tooltip;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import kb.constant.KbConstants;
 import kb.ToolClass.MD5Tool;
+
+import javax.swing.*;
 
 /**
  * @author han
@@ -190,25 +190,35 @@ public class ClientApplication extends Application
 			@Override
 			public void handle(ActionEvent event)
 			{
-				ClientApplication.setHashKey(MD5Tool.getMD5(pass.getText(), 16));
-				hostName = hostname.getText();
-				try
+				if (tname.getText().length() < 1)
 				{
-
-					Stage logStage = new Stage();
-					logStage.setWidth(500);
-					logStage.setHeight(600);
-					logStage.setTitle("authlog");
-					logStage.show();
-					logStage.setScene(setLogField());
-					logStage.setAlwaysOnTop(true);
-
-
-				} catch (NumberFormatException e)
+					Alert nameAlert = new Alert(Alert.AlertType.ERROR);
+					nameAlert.setHeaderText("请输入用户名");
+					nameAlert.showAndWait();
+				}else if(pass.getText().length()<1)
 				{
-					e.printStackTrace();
+					Alert nameAlert = new Alert(Alert.AlertType.ERROR);
+					nameAlert.setHeaderText("请输入密码");
+					nameAlert.showAndWait();
+					System.out.println("请输入密码");
+				}else {
+					ClientApplication.setHashKey(MD5Tool.getMD5(pass.getText(), 16));
+					hostName = hostname.getText();
+					try {
+
+						Stage logStage = new Stage();
+						logStage.setWidth(500);
+						logStage.setHeight(600);
+						logStage.setTitle("authlog");
+						logStage.show();
+						logStage.setScene(setLogField());
+						logStage.setAlwaysOnTop(true);
+
+
+					} catch (NumberFormatException e) {
+						e.printStackTrace();
+					}
 				}
-
 			}
 		});
 		login.setOnAction(new EventHandler<ActionEvent>()
@@ -222,8 +232,17 @@ public class ClientApplication extends Application
 				{
 					if (tname.getText().length() < 1)
 					{
-						System.out.println("请输入用户名");
-					} else
+						Alert nameAlert = new Alert(Alert.AlertType.ERROR);
+						nameAlert.setHeaderText("请输入用户名");
+						nameAlert.showAndWait();
+					}else if(pass.getText().length()<1)
+					{
+						Alert nameAlert = new Alert(Alert.AlertType.ERROR);
+						nameAlert.setHeaderText("请输入密码");
+						nameAlert.showAndWait();
+						System.out.println("请输入密码");
+					}
+					else
 					{
 						// 建立socket连接
 						client = new ClientThread(hostname.getText(), Integer.parseInt(port.getText()), tname.getText(),

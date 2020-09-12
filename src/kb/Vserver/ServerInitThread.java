@@ -65,14 +65,13 @@ public class ServerInitThread implements Runnable
 //			rThread.setDaemon(true);
 				rThread.start();
 
-				ServerReaderThread srt = new ServerReaderThread(socket,this);
-				Thread thread =new Thread(srt);
+//				ServerReaderThread srt = new ServerReaderThread(socket,this);
+//				Thread thread =new Thread(srt);
 //				clientThread.add(thread);
 
 				logArea.setItems(loglist);
 			} catch (IOException e1)
 			{
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 		}

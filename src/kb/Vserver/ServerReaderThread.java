@@ -17,7 +17,7 @@ public class ServerReaderThread implements Runnable{
     private static String mode;
 
     public ServerReaderThread(Socket socket, ServerInitThread Server) throws IOException {
-        mode = "111";
+
         this.socket = socket;
         server = Server;
         br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
