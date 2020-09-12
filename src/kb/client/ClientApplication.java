@@ -1,6 +1,7 @@
 package kb.client;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import javafx.scene.text.Font;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import javafx.stage.Window;
 import kb.constant.KbConstants;
 import kb.ToolClass.MD5Tool;
 
@@ -36,419 +38,398 @@ import javax.swing.*;
 /**
  * @author han
  */
-public class ClientApplication extends Application
-{
-	private Socket socket;
-	private ArrayList<Thread> cThreads;
-	private static ObservableList<String> loglist;// 存储服务器收到的信息
+public class ClientApplication extends Application {
+    private Socket socket;
+    private ArrayList<Thread> cThreads;
+    private static ObservableList<String> loglist;// 存储服务器收到的信息
 
-	private SimpleDateFormat sdf;
-	private final static String TGS_ID = "40501";
-	private final static String VSERVER_ID = "40502";
-	private final static String AS_ID = "40401";
-	private static String Client_ID; // 客户端生成时随机生成客户端ID,取system当前时间的前5位
-	private static String PACK;
-	private static String reqPACK;
-	private static String TgsTicket; // TGT
-	private static String VTicket; // VT
-	private static String hashKey; // client hash过后的key
+    private SimpleDateFormat sdf;
+    private final static String TGS_ID = "40501";
+    private final static String VSERVER_ID = "40502";
+    private final static String AS_ID = "40401";
+    private static String Client_ID; // 客户端生成时随机生成客户端ID,取system当前时间的前5位
+    private static String PACK;
+    private static String reqPACK;
+    private static String TgsTicket; // TGT
+    private static String VTicket; // VT
+    private static String hashKey; // client hash过后的key
 
-	private static String Kctgs; // AS生成的client与tgs之间的session-key
-	private static String Kcv;	//TGS生成的client与Vserver 之间的session-key
+    private static String Kctgs; // AS生成的client与tgs之间的session-key
+    private static String Kcv;    //TGS生成的client与Vserver 之间的session-key
 
-	private static String hostName;
+    private static String hostName;
 
-	@Override
-	public void init() throws Exception
-	{
-		Client_ID = String.valueOf(System.currentTimeMillis()).substring(9, 13);
-		loglist = FXCollections.observableArrayList();
-		super.init();
-	}
+    @Override
+    public void init() throws Exception {
+        Client_ID = String.valueOf(System.currentTimeMillis()).substring(9, 13);
+        loglist = FXCollections.observableArrayList();
+        super.init();
+    }
 
-	public static void main(String[] args)
-	{
-		launch(args);
-	}
+    public static void main(String[] args) {
+        launch(args);
+    }
 
-	@Override
-	public void stop() throws Exception
-	{
+    @Override
+    public void stop() throws Exception {
 
-		for (Thread thread : cThreads)
-		{
-			thread.interrupt();
-		}
-		if (socket != null && !socket.isClosed())
-			socket.close();
+        for (Thread thread : cThreads) {
+            thread.interrupt();
+        }
+        if (socket != null && !socket.isClosed())
+            socket.close();
 
-		super.stop();
-	}
+        super.stop();
+    }
 
-	@Override
-	public void start(Stage primaryStage) throws Exception
-	{
+    @Override
+    public void start(Stage primaryStage) throws Exception {
 
 //		ClientThread client = new ClientThread(hostName, port, name)
-		cThreads = new ArrayList<Thread>();
-		primaryStage.setScene(loginStage(primaryStage));
-		primaryStage.setIconified(false);
-		primaryStage.setWidth(600);
-		primaryStage.setHeight(400);
-		primaryStage.setTitle("客户端 ID:"+Client_ID);
-		primaryStage.setResizable(false);
-		primaryStage.show();
-	}
+        cThreads = new ArrayList<Thread>();
+        primaryStage.setScene(loginStage(primaryStage));
+        primaryStage.setIconified(false);
+        primaryStage.setWidth(600);
+        primaryStage.setHeight(400);
+        primaryStage.setTitle("客户端 ID:" + Client_ID);
+        primaryStage.setResizable(false);
+        primaryStage.show();
+    }
 
-	public Scene loginStage(Stage primaryStage)
-	{
-		Label lname = new Label("用	户：");
-		Label lpass = new Label("密	码：");
-		Label lhostName = new Label("地	址：");
-		Label lport = new Label("端	口：");
+    public Scene loginStage(Stage primaryStage) {
+        Label lname = new Label("用	户：");
+        Label lpass = new Label("密	码：");
+        Label lhostName = new Label("地	址：");
+        Label lport = new Label("端	口：");
 
-		lname.setFont(new Font(16));
-		lpass.setFont(new Font(16));
-		lhostName.setFont(new Font(16));
-		lport.setFont(new Font(16));
+        lname.setFont(new Font(16));
+        lpass.setFont(new Font(16));
+        lhostName.setFont(new Font(16));
+        lport.setFont(new Font(16));
 
-		Button regist = new Button("注册");
-		Button login = new Button("登录");
+        Button regist = new Button("注册");
+        Button login = new Button("登录");
 
-		regist.setPrefSize(60, 40);
-		login.setPrefSize(60, 40);
+        regist.setPrefSize(60, 40);
+        login.setPrefSize(60, 40);
 
-		// 用户名框
-		TextField tname = new TextField();
-		TextField port = new TextField();
-		TextField hostname = new TextField();
+        // 用户名框
+        TextField tname = new TextField();
+        TextField port = new TextField();
+        TextField hostname = new TextField();
 
-		port.setPromptText("请输入端口号");
-		port.setText("8888");
+        port.setPromptText("请输入端口号");
+        port.setText("8888");
 
-		// 格式控制
-		port.textProperty().addListener(new ChangeListener<String>()
-		{
-			@Override
-			public void changed(ObservableValue<? extends String> observable, String oldValue, String newValue)
-			{
-				String regEx = "[^0-9]";
-				Pattern p = Pattern.compile(regEx);
-				Matcher m = p.matcher(newValue);
-				String mess = m.replaceAll("");
-				if (mess.length() != newValue.length())
-				{
-					port.setText(oldValue);
-					Tooltip tp = new Tooltip("请输入数字");
-					port.setTooltip(tp);
-				} else if (newValue.length() > 6)
-				{
-					port.setText(oldValue);
-				}
+        // 格式控制
+        port.textProperty().addListener(new ChangeListener<String>() {
+            @Override
+            public void changed(ObservableValue<? extends String> observable, String oldValue, String newValue) {
+                String regEx = "[^0-9]";
+                Pattern p = Pattern.compile(regEx);
+                Matcher m = p.matcher(newValue);
+                String mess = m.replaceAll("");
+                if (mess.length() != newValue.length()) {
+                    port.setText(oldValue);
+                    Tooltip tp = new Tooltip("请输入数字");
+                    port.setTooltip(tp);
+                } else if (newValue.length() > 6) {
+                    port.setText(oldValue);
+                }
 
-			}
-		});
+            }
+        });
 
-		port.setPrefHeight(40);
-		port.setPrefWidth(200);
+        port.setPrefHeight(40);
+        port.setPrefWidth(200);
 
-		hostname.setPromptText("请输入服务器地址");
-		hostname.setText("localhost");
-		hostname.setPrefHeight(40);
-		hostname.setPrefWidth(200);
+        hostname.setPromptText("请输入服务器地址");
+        hostname.setText("localhost");
+        hostname.setPrefHeight(40);
+        hostname.setPrefWidth(200);
 
-		tname.setPromptText("请输入聊天用户名");
-		tname.setPrefHeight(40);
-		tname.setPrefWidth(200);
+        tname.setPromptText("请输入聊天用户名");
+        tname.setPrefHeight(40);
+        tname.setPrefWidth(200);
 
-		// 密码框
-		PasswordField pass = new PasswordField();
-		pass.setPrefHeight(40);
-		pass.setPrefWidth(200);
-		pass.setPromptText("请输入密码");
+        // 密码框
+        PasswordField pass = new PasswordField();
+        pass.setPrefHeight(40);
+        pass.setPrefWidth(200);
+        pass.setPromptText("请输入密码");
 
-		// 网格布局
-		GridPane gridp = new GridPane();
-		gridp.add(lhostName, 0, 0);
-		gridp.add(hostname, 1, 0);
-		gridp.add(lport, 0, 1);
-		gridp.add(port, 1, 1);
-		gridp.add(lname, 0, 2);
-		gridp.add(tname, 1, 2);
-		gridp.add(lpass, 0, 3);
-		gridp.add(pass, 1, 3);
-		gridp.add(login, 0, 4);
-		gridp.add(regist, 1, 4);
-		gridp.setVgap(20);
-		gridp.setHgap(30);
-		gridp.setAlignment(Pos.BOTTOM_CENTER);
-		gridp.setPadding(new Insets(30));
+        // 网格布局
+        GridPane gridp = new GridPane();
+        gridp.add(lhostName, 0, 0);
+        gridp.add(hostname, 1, 0);
+        gridp.add(lport, 0, 1);
+        gridp.add(port, 1, 1);
+        gridp.add(lname, 0, 2);
+        gridp.add(tname, 1, 2);
+        gridp.add(lpass, 0, 3);
+        gridp.add(pass, 1, 3);
+        gridp.add(login, 0, 4);
+        gridp.add(regist, 1, 4);
+        gridp.setVgap(20);
+        gridp.setHgap(30);
+        gridp.setAlignment(Pos.BOTTOM_CENTER);
+        gridp.setPadding(new Insets(30));
 
-		regist.setOnAction(new EventHandler<ActionEvent>()
-		{
+        regist.setOnAction(new EventHandler<ActionEvent>() {
 
-			@Override
-			public void handle(ActionEvent event)
-			{
-				if (tname.getText().length() < 1)
-				{
-					Alert nameAlert = new Alert(Alert.AlertType.ERROR);
-					nameAlert.setHeaderText("请输入用户名");
-					nameAlert.showAndWait();
-				}else if(pass.getText().length()<1)
-				{
-					Alert nameAlert = new Alert(Alert.AlertType.ERROR);
-					nameAlert.setHeaderText("请输入密码");
-					nameAlert.showAndWait();
-					System.out.println("请输入密码");
-				}else {
-					ClientApplication.setHashKey(MD5Tool.getMD5(pass.getText(), 16));
-					hostName = hostname.getText();
-					try {
+            @Override
+            public void handle(ActionEvent event) {
+                if (tname.getText().length() < 1) {
+                    Alert nameAlert = new Alert(Alert.AlertType.ERROR);
+                    nameAlert.setHeaderText("请输入用户名");
+                    nameAlert.initModality(Modality.APPLICATION_MODAL);
+                    nameAlert.showAndWait();
+                } else if (pass.getText().length() < 1) {
+                    Alert nameAlert = new Alert(Alert.AlertType.ERROR);
+                    nameAlert.setHeaderText("请输入密码");
+                    nameAlert.initModality(Modality.APPLICATION_MODAL);
+                    nameAlert.showAndWait();
+                    System.out.println("请输入密码");
+                } else {
+                    ClientApplication.setHashKey(MD5Tool.getMD5(pass.getText(), 16));
+                    hostName = hostname.getText();
+                    try {
 
-						Stage logStage = new Stage();
-						logStage.setWidth(500);
-						logStage.setHeight(600);
-						logStage.setTitle("authlog");
-						logStage.show();
-						logStage.setScene(setLogField());
-						logStage.setAlwaysOnTop(true);
+                        Stage logStage = new Stage();
+                        logStage.setWidth(500);
+                        logStage.setHeight(600);
+                        logStage.setTitle("authlog");
+                        logStage.setScene(setLogField());
+                        logStage.show();
 
+                    } catch (NumberFormatException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+        login.setOnAction(new EventHandler<ActionEvent>() {
 
-					} catch (NumberFormatException e) {
-						e.printStackTrace();
-					}
-				}
-			}
-		});
-		login.setOnAction(new EventHandler<ActionEvent>()
-		{
+            @Override
+            public void handle(ActionEvent event) {
+                ClientThread client;
 
-			@Override
-			public void handle(ActionEvent event)
-			{
-				ClientThread client;
-				try
-				{
-					if (tname.getText().length() < 1)
-					{
-						Alert nameAlert = new Alert(Alert.AlertType.ERROR);
-						nameAlert.setHeaderText("请输入用户名");
-						nameAlert.showAndWait();
-					}else if(pass.getText().length()<1)
-					{
-						Alert nameAlert = new Alert(Alert.AlertType.ERROR);
-						nameAlert.setHeaderText("请输入密码");
-						nameAlert.showAndWait();
-						System.out.println("请输入密码");
-					}
-					else
-					{
-						// 建立socket连接
-						client = new ClientThread(hostname.getText(), Integer.parseInt(port.getText()), tname.getText(),
-								KbConstants.VSERVER_MODE);
+                if (tname.getText().length() < 1) {
+                    Alert nameAlert = new Alert(Alert.AlertType.ERROR);
+                    nameAlert.setHeaderText("请输入用户名");
+                    nameAlert.initModality(Modality.APPLICATION_MODAL);
+                    nameAlert.showAndWait();
+                } else if (pass.getText().length() < 1) {
+                    Alert nameAlert = new Alert(Alert.AlertType.ERROR);
+                    nameAlert.setHeaderText("请输入密码");
+                    nameAlert.initModality(Modality.APPLICATION_MODAL);
+                    nameAlert.showAndWait();
+                    System.out.println("请输入密码");
+                } else {
+                    // 建立socket连接
+                    try {
+                        client = new ClientThread(hostname.getText(), Integer.parseInt(port.getText()), tname.getText(),
+                                KbConstants.VSERVER_MODE);
+                        System.out.println(Integer.parseInt(port.getText()));
+                        Thread clientThread = new Thread(client);
+                        cThreads.add(clientThread);
+                        clientThread.start();
+                        Stage chatStage = new Stage();
 
-						System.out.println(Integer.parseInt(port.getText()));
-						Thread clientThread = new Thread(client);
-						cThreads.add(clientThread);
-						clientThread.start();
-						Stage chatStage = new Stage();
-						chatStage.setScene(setChatStage(client));
-						chatStage.setWidth(800);
-						chatStage.setHeight(700);
-						chatStage.setTitle("当前用户" + tname.getText());
-						chatStage.show();
-						primaryStage.close();
-					}
-				} catch (NumberFormatException | IOException e)
-				{
-					e.printStackTrace();
-				}
+                        chatStage.setWidth(800);
+                        chatStage.setHeight(700);
+                        chatStage.setTitle("当前用户" + tname.getText());
+                        chatStage.setScene(setChatStage(client));
+                        chatStage.show();
+                        primaryStage.close();
+                    } catch (java.net.ConnectException e) {
+                        Alert nameAlert = new Alert(Alert.AlertType.ERROR);
+                        nameAlert.setHeaderText("服务器未开启");
+                        nameAlert.showAndWait();
+                        System.out.println("服务器未开启");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
 
-			}
+                }
 
-		});
+            }
 
-		return new Scene(gridp);
-	}
+        });
 
-	//注册获取认证信息时的二级界面
-	public Scene setLogField(){
+        return new Scene(gridp);
+    }
 
-		GridPane grid = new GridPane();
+    //注册获取认证信息时的二级界面
+    public Scene setLogField() {
 
-		ListView<String> logArea = new ListView<String>();
-		logArea.setItems(loglist);
-		logArea.setPrefSize(400,500);
-		Button start = new Button("start");
-		start.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent event) {
+        GridPane grid = new GridPane();
 
-				ClientThread client;
-				try {
-					client = new ClientThread(hostName, Integer.parseInt(KbConstants.AS_Port),
-							KbConstants.Auth_MODE);
-					Thread clientThread = new Thread(client);
-					clientThread.setName("AS_SOCKET");
-					cThreads.add(clientThread);
-					clientThread.start();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		});
+        ListView<String> logArea = new ListView<String>();
+        logArea.setItems(loglist);
+        logArea.setPrefSize(400, 500);
+        Button start = new Button("start");
+        start.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
 
-		grid.add(logArea, 0, 0);
-		grid.add(start, 0, 1);
-		grid.setAlignment(Pos.CENTER);
-		Scene scene = new Scene(grid);
-		return scene;
-	}
-	// 二级聊天界面
-	public Scene setChatStage(ClientThread client)
-	{
+                ClientThread client;
+                try {
+                    client = new ClientThread(hostName, Integer.parseInt(KbConstants.AS_Port),
+                            KbConstants.Auth_MODE);
+                    Thread clientThread = new Thread(client);
+                    clientThread.setName("AS_SOCKET");
+                    cThreads.add(clientThread);
+                    clientThread.start();
+                }catch (java.net.ConnectException e)
+                {
+                    Alert nameAlert = new Alert(Alert.AlertType.ERROR);
+                    nameAlert.setHeaderText("服务器未开启");
+                    nameAlert.initModality(Modality.APPLICATION_MODAL);
+                    nameAlert.show();
+//                    System.out.println("请输入密码");
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
 
-		Button sendBtn = new Button("发送");
-		sendBtn.setPrefSize(80, 40);
+        grid.add(logArea, 0, 0);
+        grid.add(start, 0, 1);
+        grid.setAlignment(Pos.CENTER);
+        Scene scene = new Scene(grid);
+        return scene;
+    }
 
-		Label ipAdress = new Label();
-		ipAdress.setPrefSize(500, 20);
-		ipAdress.setStyle("-fx-background-color:red");
+    // 二级聊天界面
+    public Scene setChatStage(ClientThread client) {
 
-		TextArea tArea = new TextArea();
-		TextArea sendArea = new TextArea();
-		ListView<String> recvArea = new ListView<String>();
-		tArea.setPrefSize(200, 500);
-		sendArea.setPrefSize(500, 100);
-		recvArea.setPrefSize(500, 400);
+        Button sendBtn = new Button("发送");
+        sendBtn.setPrefSize(80, 40);
 
-		VBox vbox = new VBox();
-		vbox.getChildren().add(recvArea);
-		vbox.getChildren().add(sendArea);
-		vbox.getChildren().add(sendBtn);
-		vbox.setPadding(new Insets(10));
-		VBox.setMargin(sendArea, new Insets(10, 0, 0, 0));
-		VBox.setMargin(sendBtn, new Insets(10, 0, 0, 480));
+        Label ipAdress = new Label();
+        ipAdress.setPrefSize(500, 20);
+        ipAdress.setStyle("-fx-background-color:red");
 
-		BorderPane borderPane = new BorderPane();
-		borderPane.setRight(tArea);
-		borderPane.setTop(ipAdress);
-		borderPane.setCenter(vbox);
-		BorderPane.setMargin(tArea, new Insets(10, 10, 10, 0));
+        TextArea tArea = new TextArea();
+        TextArea sendArea = new TextArea();
+        ListView<String> recvArea = new ListView<String>();
+        tArea.setPrefSize(200, 500);
+        sendArea.setPrefSize(500, 100);
+        recvArea.setPrefSize(500, 400);
 
-		recvArea.setItems(client.messList);
+        VBox vbox = new VBox();
+        vbox.getChildren().add(recvArea);
+        vbox.getChildren().add(sendArea);
+        vbox.getChildren().add(sendBtn);
+        vbox.setPadding(new Insets(10));
+        VBox.setMargin(sendArea, new Insets(10, 0, 0, 0));
+        VBox.setMargin(sendBtn, new Insets(10, 0, 0, 480));
 
-		// 发送消息
+        BorderPane borderPane = new BorderPane();
+        borderPane.setRight(tArea);
+        borderPane.setTop(ipAdress);
+        borderPane.setCenter(vbox);
+        BorderPane.setMargin(tArea, new Insets(10, 10, 10, 0));
+
+        recvArea.setItems(client.messList);
+
+        // 发送消息
 //		KeyCombination kc1 = new KeyCodeCombination(KeyCode.ENTER);
 //		Mnemonic mnemonic1 = new Mnemonic(sendBtn, kc1);
 //		Scene scene = new Scene(borderPane);
 //		scene.addMnemonic(mnemonic1);
-		sendBtn.setOnAction(new EventHandler<ActionEvent>()
-		{
-			@Override
-			public void handle(ActionEvent event)
-			{
+        sendBtn.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
 
-				try
-				{
-					client.writeMessage(sendArea.getText());
-					System.out.println(sendArea.getText());
-					sendArea.clear();
-				} catch (IOException e)
-				{
-					e.printStackTrace();
-				}
-			}
-		});
+                try {
+                    client.writeMessage(sendArea.getText());
+                    System.out.println(sendArea.getText());
+                    sendArea.clear();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
 
-		return new Scene(borderPane);
-	}
+        return new Scene(borderPane);
+    }
 
-	// 获取当前时间
-	public static String getTimeStamp()
-	{
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
-		return sdf.format(new Date());
-	}
+    // 获取当前时间
+    public static String getTimeStamp() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
+        return sdf.format(new Date());
+    }
 
 
-	public static ObservableList<String> getLoglist() {
-		return loglist;
-	}
+    public static ObservableList<String> getLoglist() {
+        return loglist;
+    }
 
-	public static String getKctgs() {
-		return Kctgs;
-	}
+    public static String getKctgs() {
+        return Kctgs;
+    }
 
-	public static void setKctgs(String kctgs) {
-		Kctgs = kctgs;
-	}
+    public static void setKctgs(String kctgs) {
+        Kctgs = kctgs;
+    }
 
-	public static String getKcv() {
-		return Kcv;
-	}
+    public static String getKcv() {
+        return Kcv;
+    }
 
-	public static void setKcv(String kcv) {
-		Kcv = kcv;
-	}
+    public static void setKcv(String kcv) {
+        Kcv = kcv;
+    }
 
-	public static String getVTicket() {
-		return VTicket;
-	}
+    public static String getVTicket() {
+        return VTicket;
+    }
 
-	public static void setVTicket(String VTicket) {
-		ClientApplication.VTicket = VTicket;
-	}
+    public static void setVTicket(String VTicket) {
+        ClientApplication.VTicket = VTicket;
+    }
 
-	public static String getReqPACK()
-	{
-		return reqPACK;
-	}
+    public static String getReqPACK() {
+        return reqPACK;
+    }
 
-	public static void setReqPACK(String reqPACK)
-	{
-		ClientApplication.reqPACK = reqPACK;
-	}
+    public static void setReqPACK(String reqPACK) {
+        ClientApplication.reqPACK = reqPACK;
+    }
 
-	public static String getPACK()
-	{
-		return PACK;
-	}
+    public static String getPACK() {
+        return PACK;
+    }
 
-	public static String getTgsTicket()
-	{
-		return TgsTicket;
-	}
+    public static String getTgsTicket() {
+        return TgsTicket;
+    }
 
-	public static void setTgsTicket(String tgsTicket)
-	{
-		TgsTicket = tgsTicket;
-	}
+    public static void setTgsTicket(String tgsTicket) {
+        TgsTicket = tgsTicket;
+    }
 
-	public static void setHashKey(String hashKey)
-	{
-		ClientApplication.hashKey = hashKey;
-	}
+    public static void setHashKey(String hashKey) {
+        ClientApplication.hashKey = hashKey;
+    }
 
-	public static String getVserverId()
-	{
-		return VSERVER_ID;
-	}
+    public static String getVserverId() {
+        return VSERVER_ID;
+    }
 
-	public static String getTgsId()
-	{
-		return TGS_ID;
-	}
+    public static String getTgsId() {
+        return TGS_ID;
+    }
 
-	public static String getClient_ID()
-	{
-		return Client_ID;
-	}
+    public static String getClient_ID() {
+        return Client_ID;
+    }
 
-	public static String getHashKey()
-	{
-		return hashKey;
-	}
+    public static String getHashKey() {
+        return hashKey;
+    }
 
 }
