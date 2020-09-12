@@ -1,7 +1,14 @@
 package kb.ToolClass;
 
+import sun.misc.BASE64Decoder;
+import sun.misc.BASE64Encoder;
+
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.Random;
 
 public class RsaTool
@@ -13,6 +20,7 @@ public class RsaTool
 	private static BigInteger f;
 	private static BigInteger n;
 	private static BigInteger e;
+	private static BigInteger x,y;
 
 	public static BigInteger getPrime1()
 	{
@@ -29,37 +37,6 @@ public class RsaTool
 		return d;
 	}
 
-	public static String numToString(String input)
-	{
-		String temp;
-		String result = "";
-		for (int i = 0; i < input.length(); i += 5)
-		{
-			temp = input.substring(i, i + 5);
-			result += (char) Integer.parseInt(temp);
-		}
-		return result;
-	}
-
-	public static String stringToNum(String input)
-	{
-		char[] mess2 = input.toCharArray();
-		String result = "";
-		for (int i = 0; i < mess2.length; i++)
-		{
-			if ((int) mess2[i] < 10000 && (int) mess2[i] >= 100)
-			{
-				result += "00";
-			} else if (((int) mess2[i] < 100))
-			{
-				result += "000";
-			}
-
-			result += (int) mess2[i];
-		}
-		return result;
-	}
-
 	public RsaTool()
 	{
 		prime1 = bigPrimeCreate();
@@ -67,41 +44,48 @@ public class RsaTool
 		n = prime1.multiply(prime2);
 		f = prime1.subtract(BigInteger.ONE).multiply(prime2.subtract(BigInteger.ONE));
 		e = BigInteger.valueOf(publicExponent);
-		d = e.modInverse(f);
+		d = exgcd(f,e);
+//		d = e.modInverse(f);
 	}
 
-	public BigInteger[] createPriKey()
-	{
-		BigInteger[] bintGp = new BigInteger[3];
-		bintGp[0] = n;
-		bintGp[1] = e;
-		return bintGp;
+	public String[] createPubKey() throws UnsupportedEncodingException {
+		String[] Gp = new String[3];
+
+		Gp[0] = Base64.getEncoder().encodeToString(n.toByteArray());
+		Gp[1] = Base64.getEncoder().encodeToString(e.toByteArray());
+		return Gp;
 	}
 
-	public BigInteger[] createPubKey()
-	{
-		BigInteger[] bintGp = new BigInteger[3];
-		bintGp[0] = n;
-		bintGp[1] = d;
+	public String[] createPriKey() throws UnsupportedEncodingException {
+		String[] Gp = new String[3];
+		Gp[0] = Base64.getEncoder().encodeToString(n.toByteArray());
+		Gp[1] = Base64.getEncoder().encodeToString(d.toByteArray());
 
-		return bintGp;
+		return Gp;
 	}
 
-	public BigInteger enCode(BigInteger n, BigInteger de, BigInteger pt) throws UnsupportedEncodingException
-	{
+	public static String enCode(String n, String de, String pt) throws IOException {
 
-//		BigInteger re = pt.modPow(de, n);
-		return quickp(pt, de, n);
+		BigInteger bign = new BigInteger(Base64.getDecoder().decode(n));
+		BigInteger bigde = new BigInteger(Base64.getDecoder().decode(de));
+		BigInteger bigpt = new BigInteger(pt.getBytes("UTF-8"));
+		BigInteger re = quickp(bigpt, bigde, bign);
 
+//		BigInteger re = bigpt.modPow(bigde, bign);
+		return Base64.getEncoder().encodeToString(re.toByteArray());
 	}
 
-	public BigInteger deCode(BigInteger n, BigInteger de, BigInteger pt) throws UnsupportedEncodingException
+	public static String deCode(String n, String de, String pt) throws IOException
 	{
+		BigInteger bign = new BigInteger(Base64.getDecoder().decode(n));
 
+		BigInteger bigde = new BigInteger(Base64.getDecoder().decode(de));
+		BigInteger bigpt = new BigInteger(Base64.getDecoder().decode(pt.getBytes("UTF-8")));
 //		BigInteger a = new BigInteger(pt);
-//		BigInteger re = pt.modPow(de, n);
+//		BigInteger re = bigpt.modPow(bigde, bign);
+		BigInteger re = quickp(bigpt, bigde, bign);
+		return new String(re.toByteArray(),"UTF-8");
 
-		return quickp(pt, de, n);
 
 	}
 
@@ -132,4 +116,44 @@ public class RsaTool
 		}
 		return bigInteger;
 	}
+
+	public static BigInteger GCD(BigInteger a, BigInteger b) {
+		if(b.equals(BigInteger.ZERO))
+			return a;
+		else
+			return GCD(b,a.mod(b));
+	}
+
+	private static BigInteger exgcd(BigInteger a,BigInteger b)
+	{
+		if(b.equals(BigInteger.ZERO))
+		{
+			x = new BigInteger("1");
+			y=new BigInteger("0");
+			return y;
+		}else {
+			BigInteger r=exgcd(b,a.mod(b));
+			BigInteger t=x;
+
+			x=y;
+			y=t.subtract((a.divide(b)).multiply(y));
+
+			return y;
+		}
+	}
+
+//	public static void main(String[] args) throws IOException {
+//		RsaTool rsa = new RsaTool();
+//		String[] pri = rsa.createPriKey();
+//		String[] pub = rsa.createPubKey();
+//		String han = "hhhhasdas哈师大飒飒的daAsD撒士大夫sd";
+//
+//		String textEncode = rsa.enCode(pub[0],pub[1],han);
+//		System.out.println(textEncode);
+//		System.out.println(rsa.deCode(pri[0],pri[1],textEncode));
+//		System.out.println(exgcd(new BigInteger("79"),new BigInteger("3220")).toString());
+//	}
+//
+//
+
 }
