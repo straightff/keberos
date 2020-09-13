@@ -51,35 +51,41 @@ public class RsaTool
 	public String[] createPubKey() throws UnsupportedEncodingException {
 		String[] Gp = new String[3];
 
-		Gp[0] = Base64.getEncoder().encodeToString(n.toByteArray());
-		Gp[1] = Base64.getEncoder().encodeToString(e.toByteArray());
+		Gp[0] = Base64.getEncoder().encodeToString(n.toString().getBytes("UTF-8"));
+		Gp[1] = Base64.getEncoder().encodeToString(e.toString().getBytes("UTF-8"));
 		return Gp;
 	}
 
 	public String[] createPriKey() throws UnsupportedEncodingException {
 		String[] Gp = new String[3];
-		Gp[0] = Base64.getEncoder().encodeToString(n.toByteArray());
-		Gp[1] = Base64.getEncoder().encodeToString(d.toByteArray());
+		Gp[0] = Base64.getEncoder().encodeToString(n.toString().getBytes("UTF-8"));
+		Gp[1] = Base64.getEncoder().encodeToString(d.toString().getBytes("UTF-8"));
 
 		return Gp;
 	}
 
+	public static BigInteger convertTo (String n) throws UnsupportedEncodingException {
+		String a =new String(Base64.getDecoder().decode(n),"UTF-8");
+		BigInteger re =new BigInteger(a);
+		return re;
+	}
 	public static String enCode(String n, String de, String pt) throws IOException {
 
-		BigInteger bign = new BigInteger(Base64.getDecoder().decode(n));
-		BigInteger bigde = new BigInteger(Base64.getDecoder().decode(de));
+		BigInteger bign = convertTo(n);
+		BigInteger bigde =convertTo(de);
 		BigInteger bigpt = new BigInteger(pt.getBytes("UTF-8"));
 		BigInteger re = quickp(bigpt, bigde, bign);
-
 //		BigInteger re = bigpt.modPow(bigde, bign);
 		return Base64.getEncoder().encodeToString(re.toByteArray());
 	}
 
+
+
 	public static String deCode(String n, String de, String pt) throws IOException
 	{
-		BigInteger bign = new BigInteger(Base64.getDecoder().decode(n));
+		BigInteger bign = convertTo(n);
 
-		BigInteger bigde = new BigInteger(Base64.getDecoder().decode(de));
+		BigInteger bigde = convertTo(de);
 		BigInteger bigpt = new BigInteger(Base64.getDecoder().decode(pt.getBytes("UTF-8")));
 //		BigInteger a = new BigInteger(pt);
 //		BigInteger re = bigpt.modPow(bigde, bign);
@@ -148,12 +154,24 @@ public class RsaTool
 //		String[] pub = rsa.createPubKey();
 //		String han = "hhhhasdas哈师大飒飒的daAsD撒士大夫sd";
 //
+//		System.out.println(pub[1]);
 //		String textEncode = rsa.enCode(pub[0],pub[1],han);
 //		System.out.println(textEncode);
 //		System.out.println(rsa.deCode(pri[0],pri[1],textEncode));
 //		System.out.println(exgcd(new BigInteger("79"),new BigInteger("3220")).toString());
+//
+//		BigInteger bi = new BigInteger("123");
+//		String a =new String(bi.toString().getBytes("UTF-8"));
+//		String ac = Base64.getEncoder().encodeToString(a.getBytes("UTF-8"));
+//		System.out.println(ac);
+//		String ae = new String(Base64.getDecoder().decode(ac),"UTF-8");
+//		System.out.println(ae);
+//
+//		System.out.println(a);
+//		String b = new String(bi.toByteArray());
+//		System.out.println(b);
 //	}
-//
-//
+
+
 
 }
