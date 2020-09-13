@@ -17,6 +17,7 @@ public class ServerInitThread implements Runnable
 	private static ArrayList<ServerAuthThread> clientThread;// 存储处理客户端信息读取线程的Thread表
 	private ObservableList<String> loglist;// 存储服务器收到的信息
 	private ObservableList<String> clientName;// 存储客户端名称
+	private static ArrayList<ClientBean> client; //存储客户端的信息Bean
 
 	private ServerSocket ss;
 	private Socket socket;
@@ -27,7 +28,7 @@ public class ServerInitThread implements Runnable
 	public ServerInitThread(int port) throws IOException
 	{
 		super();
-
+		client = new ArrayList<ClientBean>();
 		recvClientSocket = new ArrayList<Socket>();
 		clientThread = new ArrayList<ServerAuthThread>();
 		loglist = FXCollections.observableArrayList();

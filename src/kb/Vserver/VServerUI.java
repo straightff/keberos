@@ -38,9 +38,11 @@ public class VServerUI extends Application
 	private final static String AS_ID = "40401";
 
 
+
 	@Override
 	public void init() throws Exception
 	{
+
 //		ssocket = new ServerSocket(); 
 //		ServerInitThread initAc = new ServerInitThread(ssocket);
 //		super.init();
