@@ -5,7 +5,7 @@ public class test {
 
     public static void main(String[] args) {
         System.out.println(System.currentTimeMillis());
-        System.out.println(String.valueOf(System.currentTimeMillis()).substring(9, 13));
+//        System.out.println(String.valueOf(System.currentTimeMillis()).substring(9, 13));
     }
 }
 class A {
