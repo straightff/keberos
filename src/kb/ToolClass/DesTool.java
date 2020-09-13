@@ -7,6 +7,7 @@ import sun.misc.BASE64Encoder;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 /**
  * @author admin tian
@@ -423,16 +424,18 @@ public class DesTool {
     //加密
     public static String encrypt(String data, String key) throws Exception {
         byte[] bt = encrypt(data.getBytes(StandardCharsets.UTF_8), key.getBytes(StandardCharsets.UTF_8));
-        BASE64Encoder base64Encoder = new BASE64Encoder();
-        return base64Encoder.encode(bt);
+//        BASE64Encoder base64Encoder = new BASE64Encoder();
+        return Base64.getEncoder().encodeToString(bt);
+//        return base64Encoder.encode(bt);
+
     }
 
     //解密
     public static String decrypt(String data, String key) throws IOException, Exception {
-        BASE64Decoder base64Decoder =new BASE64Decoder();
-        byte []k =base64Decoder.decodeBuffer(data);
+//        BASE64Decoder base64Decoder =new BASE64Decoder();
+        byte []k =Base64.getDecoder().decode(data.getBytes("UTF-8"));
         byte [] bt =decrypt(k,key.getBytes(StandardCharsets.UTF_8));
-        return new String(bt).trim();
+        return new String(bt,"UTF-8").trim();
     }
 
 }

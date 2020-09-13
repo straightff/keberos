@@ -12,10 +12,12 @@ import java.util.Date;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import kb.TGS.TGSUI;
+import kb.ToolClass.RsaTool;
 import kb.ToolClass.SqliteTool;
 import kb.client.ClientApplication;
 import kb.constant.KbConstants;
 import kb.ToolClass.DesTool;
+import sun.security.krb5.internal.crypto.Des;
 
 //读取客户端消息
 public class ServerAuthThread implements Runnable {
@@ -35,14 +37,13 @@ public class ServerAuthThread implements Runnable {
 
     @Override
     public void run() {
-
-        System.out.println("begin");
         while (true) {
             try {
                 AuthAndPacked();
             } catch (Exception e) {
                 Platform.runLater(() -> server.getLoglist().add("error read"));
                 e.printStackTrace();
+                break;
             }
         }
 
@@ -71,14 +72,15 @@ public class ServerAuthThread implements Runnable {
         //收包
         String recvPackEncode = recvAuthMess();
         String[] clientMess = unPack(recvPackEncode);
+
         //获取头部，来判断VServer的应用方式
-        mode = clientMess[0];
+        //mode = clientMess[0];
         String packEncode; //要返回的包
 //            System.out.println("mode is "+mode);
-        if (mode.equals(KbConstants.C_V)) {
-            Platform.runLater(() -> ClientApplication.getLoglist().add("认证开始"));
+        if (clientMess.length!=1) {
+            Platform.runLater(() -> server.getLoglist().add("认证开始"));
             SqliteTool sql = new SqliteTool("ServerMess");
-
+            VServerUI.setTicketV(clientMess[1]);
             String Vkey = sql.searchOneFromTable(VServerUI.getVserverId(), "ServerRegist", "KEY");
 
             Platform.runLater(() -> server.getLoglist().add("C-->Vserver：" + recvPackEncode));
@@ -103,33 +105,46 @@ public class ServerAuthThread implements Runnable {
                 System.out.println(s);
             }
             //发包
-            String packContent = Auth[2] + 1;
+            String packContent = KbConstants.V_C+KbConstants.SEP+Auth[2] + 1;
             packEncode = DesTool.encrypt(packContent, Kcv);
             writeAuthMess(packEncode);
             String finalPack = packEncode;
             Platform.runLater(() -> server.getLoglist().add("Vserver-->C:" + finalPack));
-            Platform.runLater(() -> ClientApplication.getLoglist().add("认证完成"));
+            Platform.runLater(() ->server.getLoglist().add("认证完成"));
             //todo 验证过程
         }
         //mode = KbContains.C_V_chat
         else {
-            ClientBean cli = new ClientBean(clientMess[1], clientMess[2], clientMess[3], socket);
+            System.out.println(VServerUI.getTicketV());
+            String packDesDecode = DesTool.decrypt(recvPackEncode,VServerUI.getTicketV());
+//            packDesDecode.replaceAll("\r|\n","");
+            System.out.println(packDesDecode);
+            String[] pri = unPack(KbConstants.S_PriKEY);
+            String packRsaDecode = RsaTool.deCode(pri[0],pri[1],packDesDecode.trim());
+            String[] Mess = unPack(packRsaDecode);
+            ClientBean cli = new ClientBean(Mess[1], Mess[2], Mess[3], socket);
             String ts = VServerUI.getTimeStamp();
-            cli.getMessMap().put(ts, clientMess[4]);
+            cli.getMessMap().put(ts, Mess[4]);
             // packEncode = clientMess[1];
 //              final String mess = br.readLine();
             Platform.runLater(() -> {
-                server.getLoglist().add("clientID:" + cli.getClientId() + " Addr:" + cli.getAddr() + " user:" + cli.getName()+" mess:"+ts+" "+clientMess[4]);
+                server.getLoglist().add("clientID:" + cli.getClientId() + " Addr:" + cli.getAddr() + " user:" + cli.getName()+" mess:"+ts+" "+Mess[4]);
+                try {
+                    server.writeToAll("clientID:" + cli.getClientId() + " Addr:" + cli.getAddr() + " user:" + cli.getName()+" ts:"+ts+" mess:"+Mess[4]);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             });
-            server.writeToAll("clientID:" + cli.getClientId() + " Addr:" + cli.getAddr() + " user:" + cli.getName()+" ts:"+ts+" mess:"+clientMess[4]);
 
 //            return packEncode;
         }
     }
 
+
+
     //写认证消息
     public void writeAuthMess(String input) throws IOException {
-        os.write((input + "=" + "\n").getBytes());
+        os.write((input + "=" + "\n").getBytes("UTF-8"));
         os.flush();
     }
 

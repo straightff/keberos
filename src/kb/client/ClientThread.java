@@ -191,6 +191,9 @@ public class ClientThread implements Runnable {
 
         String recvPack = DesTool.decrypt(recvPackEncode, ClientApplication.getKcv());
         String[] clientMess = unPack(recvPack);
+        for (String mess : clientMess) {
+            System.out.println(mess);
+        }
 
         if (clientMess[1].equals(TS + 1)) {
             Platform.runLater(() -> ClientApplication.getLoglist().add("认证成功"));
@@ -217,10 +220,24 @@ public class ClientThread implements Runnable {
     }
 
     // 写聊天消息
-    public void writeMessage(String input,String clientid,String userName) throws IOException {
+    public void writeMessage(String input,String clientid,String userName) throws Exception {
 //        os.write((KbConstants.C_V_CHAT+"client-" + name + "-says-" + input + "\n").getBytes(StandardCharsets.UTF_8));
         // head-clientid-userName-Addr-mess=
-        os.write((KbConstants.C_V_CHAT + KbConstants.SEP +clientid +KbConstants.SEP+userName+KbConstants.SEP+socket.getLocalAddress()+KbConstants.SEP+ input + "=" + "\n").getBytes(StandardCharsets.UTF_8));
+
+        String pack = KbConstants.C_V_CHAT + KbConstants.SEP +clientid +KbConstants.SEP+userName+KbConstants.SEP+socket.getLocalAddress()+KbConstants.SEP+ input;
+        String[] key = unPack(KbConstants.S_PubKEY);
+        //rsa加密
+        String mess = RsaTool.enCode(key[0],key[1],pack);
+        Platform.runLater(()->{
+            loglist.add("消息经过Vserver的公钥加密:"+mess);
+        });
+        //再套外面的des加密
+        System.out.println("tV::"+ClientApplication.getVTicket());
+        String packDesEncode = DesTool.encrypt(mess,ClientApplication.getVTicket());
+        Platform.runLater(()->{
+            loglist.add("消息经过ticketV des加密:"+packDesEncode);
+        });
+        os.write((packDesEncode + "=" + "\n").getBytes(StandardCharsets.UTF_8));
         os.flush();
 
     }

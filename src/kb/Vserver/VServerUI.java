@@ -36,7 +36,7 @@ public class VServerUI extends Application
 	private final static String TGS_ID = "40501";
 	private final static String VSERVER_ID = "40502";
 	private final static String AS_ID = "40401";
-
+	private static String TicketV;
 
 
 	@Override
@@ -179,6 +179,15 @@ public class VServerUI extends Application
 		});
 		return scene;
 	}
+
+	public static String getTicketV() {
+		return TicketV;
+	}
+
+	public static void setTicketV(String ticketV) {
+		TicketV = ticketV;
+	}
+
 	public static String getTgsId() {
 		return TGS_ID;
 	}

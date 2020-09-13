@@ -312,9 +312,10 @@ public class ClientApplication extends Application {
         ipAdress.setPrefSize(500, 20);
         ipAdress.setStyle("-fx-background-color:red");
 
-        TextArea tArea = new TextArea();
+        ListView<String> tArea = new ListView<>();
+        tArea.setItems(client.loglist);
         TextArea sendArea = new TextArea();
-        ListView<String> recvArea = new ListView<String>();
+        ListView<String> recvArea = new ListView<>();
         tArea.setPrefSize(200, 500);
         sendArea.setPrefSize(500, 100);
         recvArea.setPrefSize(500, 400);
@@ -343,7 +344,7 @@ public class ClientApplication extends Application {
                     client.writeMessage(sendArea.getText(),ClientApplication.getClient_ID(),client.getName());
                     System.out.println(sendArea.getText());
                     sendArea.clear();
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
