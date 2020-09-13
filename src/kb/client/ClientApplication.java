@@ -335,17 +335,12 @@ public class ClientApplication extends Application {
 
         recvArea.setItems(client.messList);
 
-        // 发送消息
-//		KeyCombination kc1 = new KeyCodeCombination(KeyCode.ENTER);
-//		Mnemonic mnemonic1 = new Mnemonic(sendBtn, kc1);
-//		Scene scene = new Scene(borderPane);
-//		scene.addMnemonic(mnemonic1);
         sendBtn.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
 
                 try {
-                    client.writeMessage(sendArea.getText());
+                    client.writeMessage(sendArea.getText(),ClientApplication.getClient_ID(),client.getName());
                     System.out.println(sendArea.getText());
                     sendArea.clear();
                 } catch (IOException e) {

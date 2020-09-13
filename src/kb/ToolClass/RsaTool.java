@@ -148,10 +148,6 @@ public class RsaTool
 		}
 	}
 
-//	public static void main(String[] args) throws IOException {
-//		RsaTool rsa = new RsaTool();
-//		String[] pri = rsa.createPriKey();
-//		String[] pub = rsa.createPubKey();
 //		String han = "hhhhasdas哈师大飒飒的daAsD撒士大夫sd";
 //
 //		System.out.println(pub[1]);
@@ -170,7 +166,6 @@ public class RsaTool
 //		System.out.println(a);
 //		String b = new String(bi.toByteArray());
 //		System.out.println(b);
-//	}
 
 
 

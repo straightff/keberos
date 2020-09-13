@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import kb.ToolClass.RsaTool;
 import kb.constant.KbConstants;
 import kb.ToolClass.RandomKeyTool;
 import kb.ToolClass.DesTool;
@@ -22,7 +23,7 @@ public class ClientThread implements Runnable {
     private OutputStream os;
     private BufferedReader br;
     //	private BufferedWriter
-    private String name;
+    private String name; //username
     public ObservableList<String> messList;
     public ObservableList<String> loglist;
     private int mode;
@@ -85,12 +86,15 @@ public class ClientThread implements Runnable {
     // AS 认证过程，请求得到tgsticket保存
     private void AS_auth() throws IOException {
         //发包
-        String send_pack = KbConstants.C_AS_regist + KbConstants.SEP + ClientApplication.getClient_ID() + KbConstants.SEP + ClientApplication.getTgsId()
-                + KbConstants.SEP + ClientApplication.getTimeStamp() + KbConstants.SEP + ClientApplication.getHashKey(); // 将要发送的数据包
+        String send_pack = KbConstants.C_AS + KbConstants.SEP + ClientApplication.getClient_ID() + KbConstants.SEP + ClientApplication.getTgsId()
+                + KbConstants.SEP + ClientApplication.getTimeStamp() ; // 将要发送的数据包
         writeAuthMess(send_pack, os);
         try {
             String recvPackEncode = recvAuthMess(br);
-            String recvPack = DesTool.decrypt(recvPackEncode, ClientApplication.getHashKey());
+
+            //rsa
+            String[] keys = unPack(KbConstants.C_PriKEY);
+            String recvPack = RsaTool.deCode(keys[0],keys[1],recvPackEncode);
             System.out.println("recvPack is" + recvPack);
 
             String[] clientMess = recvPack.split("-");
@@ -189,7 +193,7 @@ public class ClientThread implements Runnable {
         String[] clientMess = unPack(recvPack);
 
         if (clientMess[1].equals(TS + 1)) {
-
+            Platform.runLater(() -> ClientApplication.getLoglist().add("认证成功"));
         }
         VSos.close();
         Vbr.close();
@@ -213,9 +217,10 @@ public class ClientThread implements Runnable {
     }
 
     // 写聊天消息
-    public void writeMessage(String input) throws IOException {
+    public void writeMessage(String input,String clientid,String userName) throws IOException {
 //        os.write((KbConstants.C_V_CHAT+"client-" + name + "-says-" + input + "\n").getBytes(StandardCharsets.UTF_8));
-        os.write((KbConstants.C_V_CHAT + KbConstants.SEP + input + "=" + "\n").getBytes(StandardCharsets.UTF_8));
+        // head-clientid-userName-Addr-mess=
+        os.write((KbConstants.C_V_CHAT + KbConstants.SEP +clientid +KbConstants.SEP+userName+KbConstants.SEP+socket.getLocalAddress()+KbConstants.SEP+ input + "=" + "\n").getBytes(StandardCharsets.UTF_8));
         os.flush();
 
     }
@@ -233,5 +238,13 @@ public class ClientThread implements Runnable {
     //判断数据库中是否存在
     public boolean isAlreadExist(String input) {
         return false;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 }

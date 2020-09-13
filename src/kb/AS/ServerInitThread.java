@@ -17,7 +17,7 @@ public class ServerInitThread implements Runnable
 	private static ArrayList<ServerReaderThead> clientThread;// 存储处理客户端信息读取线程的Thread表
 	private ObservableList<String> loglist;// 存储服务器收到的信息
 	private ObservableList<String> clientName;// 存储客户端名称
-	private ArrayList<String> packList; // 接受多个客户端传来的PACK
+//	private ArrayList<String> packList; // 接受多个客户端传来的PACK
 
 	private ServerSocket ss;
 	private Socket socket;
@@ -29,7 +29,6 @@ public class ServerInitThread implements Runnable
 	{
 		super();
 
-		packList = new ArrayList<String>();
 		recvClientSocket = new ArrayList<Socket>();
 		clientThread = new ArrayList<ServerReaderThead>();
 		loglist = FXCollections.observableArrayList();
@@ -84,11 +83,6 @@ public class ServerInitThread implements Runnable
 		{
 			srt.writeAuthMess(input);
 		}
-	}
-
-	public ArrayList<String> getPackList()
-	{
-		return packList;
 	}
 
 	public static ArrayList<ServerReaderThead> getClientThread()

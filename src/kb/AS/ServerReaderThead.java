@@ -4,12 +4,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.math.BigInteger;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
 import javafx.application.Platform;
 import kb.TGS.TGSUI;
 import kb.ToolClass.DesTool;
+import kb.ToolClass.RsaTool;
 import kb.ToolClass.SqliteTool;
 import kb.constant.KbConstants;
 import kb.ToolClass.RandomKeyTool;
@@ -39,26 +41,28 @@ public class ServerReaderThead implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        clientMess = unPack(mess);
         String finalMess = mess;
         Platform.runLater(() ->
         {
-            server.getPackList().add(finalMess); // 将接受的包先存入list中暂存
-            server.getLoglist().add("接收到新的数据包....处理中");
-            clientMess = unPack(finalMess);
-            for (String string : clientMess) {
-                server.getLoglist().add(string);
-            }
+//            server.getPackList().add(finalMess); // 将接受的包先存入list中暂存
+            server.getLoglist().add("接收到新的请求>>>>>");
 
-//					if (clientMess[0].equals(KbConstants.C_AS_regist))
-//					{
-//						// TODO 根据Client id检索数据库，查看是否存在
-//					}
-            if (clientMess[0].equals(KbConstants.C_AS_regist)) {
-                server.getLoglist().add("接收到一条来自AS的请求信息");
-                // TODO DataBase insert(数据库插入信息），根据操作后的返回信息来决定头部是AS_C还是AS_C_ERROR
+            if (clientMess[0].equals(KbConstants.C_AS)) {
+                server.getLoglist().add("接收到一条来自Client的请求信息，内容如下");
+
+//                clientMess = unPack(finalMess);
+                for (String string : clientMess) {
+                    server.getLoglist().add(string);
+                }
+                server.getLoglist().add("解包完成");
+
+                //开始对client返回信息
                 String AS_req_encoded = null;
                 try {
                     AS_req_encoded = getPacked();
+                    System.out.println(AS_req_encoded);
+
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -71,7 +75,7 @@ public class ServerReaderThead implements Runnable {
 
             }
             if (clientMess[0].equals(KbConstants.C_AS_ERROR)) {
-                server.getLoglist().add("接收到一条来自AS的错误信息");
+                server.getLoglist().add("Client 异常断开!");
             }
         });
 
@@ -109,7 +113,8 @@ public class ServerReaderThead implements Runnable {
         String AS_req = KbConstants.AS_C + KbConstants.SEP + ASUI.getKctgs() + KbConstants.SEP + clientMess[1]
                 + KbConstants.SEP + ASUI.getTgsId() + KbConstants.SEP + ASUI.getTimeStamp()
                 + KbConstants.SEP + ASUI.getLifetime() + KbConstants.SEP + ticket;
-        String AS_req_encoded = DesTool.encrypt(AS_req, clientMess[4]);
+        String[] keys = unPack(KbConstants.C_PubKEY);
+        String AS_req_encoded = RsaTool.enCode(keys[0],keys[1],AS_req);
         return AS_req_encoded;
     }
 
