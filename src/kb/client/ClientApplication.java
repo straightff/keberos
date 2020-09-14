@@ -428,4 +428,11 @@ public class ClientApplication extends Application {
         return hashKey;
     }
 
+    public static String getHostName() {
+        return hostName;
+    }
+
+    public static void setHostName(String hostName) {
+        ClientApplication.hostName = hostName;
+    }
 }

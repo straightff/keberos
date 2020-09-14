@@ -150,7 +150,7 @@ public class ClientThread implements Runnable {
     private void TGS_auth() throws Exception {
 
         //建立与TGS的socket连接
-        Socket TGSsocket = new Socket("localhost", 7777);
+        Socket TGSsocket = new Socket(ClientApplication.getHostName(), 7777);
         OutputStream TGSos = TGSsocket.getOutputStream();
 
         BufferedReader TGSbr = new BufferedReader(new InputStreamReader(TGSsocket.getInputStream()));
@@ -198,7 +198,7 @@ public class ClientThread implements Runnable {
     private void VServer_auth() throws Exception {
 
         //建立与server的socket连接
-        Socket Vsocket = new Socket("localhost", 8888);
+        Socket Vsocket = new Socket(ClientApplication.getHostName(), 8888);
         OutputStream VSos = Vsocket.getOutputStream();
         BufferedReader Vbr = new BufferedReader(new InputStreamReader(Vsocket.getInputStream()));
 
