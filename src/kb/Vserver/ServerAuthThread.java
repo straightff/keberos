@@ -73,6 +73,7 @@ public class ServerAuthThread implements Runnable {
                 Platform.runLater(() -> server.getLoglist().add("Vserver-->C:" + finalPack));
 
             } else {
+                ServerInitThread.getClientThread().add(this);
                 System.out.println("liaotian");
                 try {
                     chatAndPack(recv);

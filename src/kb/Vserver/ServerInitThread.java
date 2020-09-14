@@ -57,7 +57,7 @@ public class ServerInitThread implements Runnable {
                 ServerAuthThread sat = new ServerAuthThread(socket, this);
                 Thread rThread = new Thread(sat);
                 System.out.println("第"+i+"个线程");
-                ServerInitThread.getClientThread().add(sat);
+//                ServerInitThread.getClientThread().add(sat);
 //			rThread.setDaemon(true);
                 rThread.start();
 
@@ -81,12 +81,12 @@ public class ServerInitThread implements Runnable {
 //        }
         int i=0;
         for (ServerAuthThread srt : clientThread) {
-            if(i%2==0)
-            {
-                ++i;
-                continue;
-            }
-            ++i;
+//            if(i%2==0)
+//            {
+//                ++i;
+//                continue;
+//            }
+//            ++i;
             System.out.println("i="+i);
             srt.writeMessage(input, clientid, userName, ts);
         }
