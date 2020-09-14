@@ -81,7 +81,6 @@ public class ServerReaderThead implements Runnable {
         String[] ticketMess = unPack(DesTool.decrypt(clientMess[2], tgskey));
         //解密之后可获得Kctgs
         String Kctgs = clientMess[4];
-        System.out.println(ClientApplication.getKctgs());
         System.out.println("1111");
         System.out.println(DesTool.decrypt(clientMess[3], Kctgs));
         String[] AuthMess = unPack(DesTool.decrypt(clientMess[3], Kctgs));

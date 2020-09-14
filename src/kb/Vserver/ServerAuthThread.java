@@ -26,6 +26,7 @@ public class ServerAuthThread implements Runnable {
     private OutputStream os;
     private ServerInitThread server;
     private static String mode;
+    private static boolean isAuth = false;
 
     public ServerAuthThread(Socket socket, ServerInitThread Server) throws IOException {
         mode = "111";
@@ -37,14 +38,63 @@ public class ServerAuthThread implements Runnable {
 
     @Override
     public void run() {
-        while (true) {
-            try {
-                AuthAndPacked();
-            } catch (Exception e) {
-                Platform.runLater(() -> server.getLoglist().add("error read"));
-                e.printStackTrace();
-                break;
+
+//        while (true) {
+//            try {
+//                String recv = recvAuthMess();
+//                String[] cmess = unPack(recv);
+//                if (mode.equals(KbConstants.C_V)) {
+//                    AuthAndPacked(recv);
+//                   break;
+//                } else {
+//                    chatAndPack(recv);
+//
+//                }
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//            System.out.println("验证线程结束");
+//        }
+        String pack = null;
+
+        try {
+            String recv = recvAuthMess();
+            String mess1[] = unPack(recv);
+            for (String s : mess1) {
+                System.out.println(s);
             }
+
+            if (mess1[0].equals(KbConstants.C_V)) {
+                pack = AuthAndPacked(recv);
+                writeAuthMess(pack);
+                String finalPack = pack;
+                Platform.runLater(() -> server.getLoglist().add("Vserver-->C:" + finalPack));
+
+            } else {
+                System.out.println("liaotian");
+                try {
+                    chatAndPack(recv);
+//                        server.writeToAll(mess);
+                    String mes = "";
+
+                    while((mes = br.readLine())!=null) {
+                        StringBuilder sb = new StringBuilder();
+                        System.out.println("recvmes"+mes);
+                        sb.append(mes).deleteCharAt(sb.length()-1);
+                        chatAndPack(sb.toString());
+                    }
+                    String finalMes = mes;
+                    Platform.runLater(() -> server.getLoglist().add(finalMes));
+                } catch (IOException e) {
+                    Platform.runLater(() -> server.getLoglist().add("error read"));
+                    e.printStackTrace();
+                }
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
     }
@@ -68,79 +118,110 @@ public class ServerAuthThread implements Runnable {
 
 
     //验证及打包
-    public void AuthAndPacked() throws Exception {
+    public String AuthAndPacked(String recvPackEncode) throws Exception {
         //收包
-        String recvPackEncode = recvAuthMess();
+//        String recvPackEncode = recvAuthMess();
         String[] clientMess = unPack(recvPackEncode);
 
         //获取头部，来判断VServer的应用方式
         //mode = clientMess[0];
         String packEncode; //要返回的包
 //            System.out.println("mode is "+mode);
-        if (clientMess.length!=1) {
-            Platform.runLater(() -> server.getLoglist().add("认证开始"));
-            SqliteTool sql = new SqliteTool("ServerMess");
-            VServerUI.setTicketV(clientMess[1]);
-            String Vkey = sql.searchOneFromTable(VServerUI.getVserverId(), "ServerRegist", "KEY");
+        mode = KbConstants.C_V;
+        Platform.runLater(() -> server.getLoglist().add("认证开始"));
+        SqliteTool sql = new SqliteTool("ServerMess");
+        VServerUI.setTicketV(clientMess[1]);
+        String Vkey = sql.searchOneFromTable(VServerUI.getVserverId(), "ServerRegist", "KEY");
 
-            Platform.runLater(() -> server.getLoglist().add("C-->Vserver：" + recvPackEncode));
+        Platform.runLater(() -> server.getLoglist().add("C-->Vserver：" + recvPackEncode));
 
-            System.out.println("clientMess:");
-            for (String mess : clientMess) {
-                System.out.println(mess);
-            }
-
-            String[] ticket = unPack(DesTool.decrypt(clientMess[1], Vkey));
-            System.out.println("ticket package");
-            for (String s : ticket) {
-                System.out.println(s);
-            }
-
-            String Kcv = ticket[0];
-            System.out.println("kcv:" + Kcv);
-            String[] Auth = unPack(DesTool.decrypt(clientMess[2], Kcv));
-
-            System.out.println("Auth package");
-            for (String s : Auth) {
-                System.out.println(s);
-            }
-            //发包
-            String packContent = KbConstants.V_C+KbConstants.SEP+Auth[2] + 1;
-            packEncode = DesTool.encrypt(packContent, Kcv);
-            writeAuthMess(packEncode);
-            String finalPack = packEncode;
-            Platform.runLater(() -> server.getLoglist().add("Vserver-->C:" + finalPack));
-            Platform.runLater(() ->server.getLoglist().add("认证完成"));
-            //todo 验证过程
+        System.out.println("clientMess:");
+        for (String mess : clientMess) {
+            System.out.println(mess);
         }
-        //mode = KbContains.C_V_chat
-        else {
-            System.out.println(VServerUI.getTicketV());
-            String packDesDecode = DesTool.decrypt(recvPackEncode,VServerUI.getTicketV());
-//            packDesDecode.replaceAll("\r|\n","");
-            System.out.println(packDesDecode);
-            String[] pri = unPack(KbConstants.S_PriKEY);
-            String packRsaDecode = RsaTool.deCode(pri[0],pri[1],packDesDecode.trim());
-            String[] Mess = unPack(packRsaDecode);
-            ClientBean cli = new ClientBean(Mess[1], Mess[2], Mess[3], socket);
-            String ts = VServerUI.getTimeStamp();
-            cli.getMessMap().put(ts, Mess[4]);
-            // packEncode = clientMess[1];
-//              final String mess = br.readLine();
-            Platform.runLater(() -> {
-                server.getLoglist().add("clientID:" + cli.getClientId() + " Addr:" + cli.getAddr() + " user:" + cli.getName()+" mess:"+ts+" "+Mess[4]);
-                try {
-                    server.writeToAll("clientID:" + cli.getClientId() + " Addr:" + cli.getAddr() + " user:" + cli.getName()+" ts:"+ts+" mess:"+Mess[4]);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
 
-//            return packEncode;
+        String[] ticket = unPack(DesTool.decrypt(clientMess[1], Vkey));
+        System.out.println("ticket package");
+        for (String s : ticket) {
+            System.out.println(s);
         }
+
+        String Kcv = ticket[0];
+        System.out.println("kcv:" + Kcv);
+        String[] Auth = unPack(DesTool.decrypt(clientMess[2], Kcv));
+
+        System.out.println("Auth package");
+        for (String s : Auth) {
+            System.out.println(s);
+        }
+        //发包
+        String packContent = KbConstants.V_C + KbConstants.SEP + Auth[2] + 1;
+        packEncode = DesTool.encrypt(packContent, Kcv);
+        writeAuthMess(packEncode);
+        String finalPack = packEncode;
+        Platform.runLater(() -> server.getLoglist().add("Vserver-->C:" + finalPack));
+        Platform.runLater(() -> server.getLoglist().add("认证完成"));
+
+
+        //todo 验证过程
+
+
+
+        return packEncode;
+
     }
 
+    public void chatAndPack(String mess) throws Exception {
+        System.out.println(VServerUI.getTicketV());
+//        ServerInitThread.getClientThread().add(this);
+        String[] messages = unPack(mess);
+//        String packDesDecode = DesTool.decrypt(messages[1], VServerUI.getTicketV());
+////            packDesDecode.replaceAll("\r|\n","");
+//        System.out.println(packDesDecode);
+        String[] pri = unPack(KbConstants.S_PriKEY);
+        String packRsaDecode = RsaTool.deCode(pri[0], pri[1], messages[1].trim());
+        String[] Mess = unPack(packRsaDecode);
+        ClientBean cli = new ClientBean(Mess[0], Mess[1], Mess[2], socket);
 
+        cli.getMessMap().put(Mess[3], Mess[4]);
+        // packEncode = clientMess[1];
+//              final String mess = br.readLine();
+        Platform.runLater(() -> {
+            server.getLoglist().add("clientID:" + cli.getClientId() + " Addr:" + Mess[2] + " user:" + Mess[1] + " time:" + Mess[3] + " Message:" + Mess[4]);
+
+        });
+
+        try {
+            server.writeToAll(Mess[3], cli.getClientId(), cli.getName(), Mess[4]);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public void writeMessage(String input, String clientid, String userName, String ts) throws Exception {
+//        os.write((KbConstants.C_V_CHAT+"client-" + name + "-says-" + input + "\n").getBytes(StandardCharsets.UTF_8));
+        // head-clientid-userName-Addr-mess=
+
+//        String pack = KbConstants.V_C_CHAT + KbConstants.SEP + clientid + KbConstants.SEP + userName + KbConstants.SEP + socket.getInetAddress() + KbConstants.SEP + ts + KbConstants.SEP + input;
+        String pack =  clientid + KbConstants.SEP + userName + KbConstants.SEP + socket.getInetAddress() + KbConstants.SEP + ts + KbConstants.SEP + input;
+        String[] key = unPack(KbConstants.C_PubKEY);
+        //rsa加密
+        String mess = RsaTool.enCode(key[0], key[1], pack);
+        Platform.runLater(() -> {
+            server.getLoglist().add("消息经过Vserver的公钥加密:" + mess);
+        });
+//        //再套外面的des加密
+//        System.out.println("tV::" + VServerUI.getTicketV());
+//        String packDesEncode = DesTool.encrypt(mess, VServerUI.getTicketV());
+//        Platform.runLater(() -> {
+//            server.getLoglist().add("消息经过ticketV des加密:" + packDesEncode);
+//        });
+        os.write((KbConstants.V_C_CHAT + KbConstants.SEP +mess + "=" + "\n").getBytes(StandardCharsets.UTF_8));
+        os.flush();
+        os.flush();
+
+    }
 
     //写认证消息
     public void writeAuthMess(String input) throws IOException {
@@ -172,3 +253,5 @@ public class ServerAuthThread implements Runnable {
         return temp;
     }
 }
+
+

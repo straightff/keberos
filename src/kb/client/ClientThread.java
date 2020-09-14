@@ -1,3 +1,4 @@
+
 package kb.client;
 
 import java.io.BufferedReader;
@@ -13,6 +14,7 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import kb.ToolClass.RsaTool;
+import kb.Vserver.VServerUI;
 import kb.constant.KbConstants;
 import kb.ToolClass.RandomKeyTool;
 import kb.ToolClass.DesTool;
@@ -43,11 +45,37 @@ public class ClientThread implements Runnable {
             }
             // TGS
 
-        } else {
+        }
+        if(mode==KbConstants.VSERVER_MODE)
+        {
             while (true) {
                 try {
-                    final String mess = br.readLine();
-                    Platform.runLater(() -> messList.add(mess));
+                    final String mess = recvAuthMess(br);
+                    String[] messages = unPack(mess);
+                    Platform.runLater(() -> {
+                        for (String message : messages) {
+                            System.out.println(message);
+                        }
+                        messList.add(mess);
+//                        String packDesDecode = null;
+                        try {
+//                            packDesDecode = DesTool.decrypt(messages[1], ClientApplication.getVTicket());
+//                            System.out.println(packDesDecode);
+                            String[] pri = unPack(KbConstants.C_PriKEY);
+                            String packRsaDecode = RsaTool.deCode(pri[0],pri[1],messages[1]);
+                            System.out.println("packRSaDecode:"+packRsaDecode);
+                            String[] Mess = unPack(packRsaDecode);
+                            Platform.runLater(()->
+                            {
+                                messList.add("clientID:" + Mess[0] + " Addr:" + Mess[2] + " user:" + Mess[1]+" time:"+Mess[4]+" Message:"+Mess[3]);
+                            });
+
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+//            packDesDecode.replaceAll("\r|\n","");
+
+                    });
                 } catch (SocketException e) {
                     Platform.runLater(() -> messList.add("ERROR!"));
                     break;
@@ -224,7 +252,7 @@ public class ClientThread implements Runnable {
 //        os.write((KbConstants.C_V_CHAT+"client-" + name + "-says-" + input + "\n").getBytes(StandardCharsets.UTF_8));
         // head-clientid-userName-Addr-mess=
 
-        String pack = KbConstants.C_V_CHAT + KbConstants.SEP +clientid +KbConstants.SEP+userName+KbConstants.SEP+socket.getLocalAddress()+KbConstants.SEP+ input;
+        String pack = clientid +KbConstants.SEP+userName+KbConstants.SEP+socket.getLocalAddress()+KbConstants.SEP+ClientApplication.getTimeStamp()+KbConstants.SEP+ input;
         String[] key = unPack(KbConstants.S_PubKEY);
         //rsa加密
         String mess = RsaTool.enCode(key[0],key[1],pack);
@@ -232,12 +260,12 @@ public class ClientThread implements Runnable {
             loglist.add("消息经过Vserver的公钥加密:"+mess);
         });
         //再套外面的des加密
-        System.out.println("tV::"+ClientApplication.getVTicket());
-        String packDesEncode = DesTool.encrypt(mess,ClientApplication.getVTicket());
-        Platform.runLater(()->{
-            loglist.add("消息经过ticketV des加密:"+packDesEncode);
-        });
-        os.write((packDesEncode + "=" + "\n").getBytes(StandardCharsets.UTF_8));
+//        System.out.println("tV::"+ClientApplication.getVTicket());
+//        String packDesEncode = DesTool.encrypt(mess,ClientApplication.getVTicket());
+//        Platform.runLater(()->{
+//            loglist.add("消息经过ticketV des加密:"+packDesEncode);
+//        });
+        os.write((KbConstants.C_V_CHAT + KbConstants.SEP +mess+"="+ "\n").getBytes(StandardCharsets.UTF_8));
         os.flush();
 
     }

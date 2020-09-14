@@ -1,5 +1,7 @@
 package kb.SQLiteTest;
 
+import kb.ToolClass.SqliteTool;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -76,6 +78,9 @@ public class Sqlite_realize {
 		}
 
 	}
-	
+
+	public static void main(String[] args) {
+
+	}
 
 }

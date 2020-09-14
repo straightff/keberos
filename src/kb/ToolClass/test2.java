@@ -94,6 +94,10 @@ public final class test2
 		return encryptStr;
 	}
 
+	public static void main(String[] args) {
+		String a = "11112";
+		System.out.println(a.substring(0,a.length()-1));
+	}
 //	/**
 //	 * 解密
 //	 */
