@@ -24,12 +24,14 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
+import javafx.util.Callback;
 import kb.constant.KbConstants;
 import kb.ToolClass.MD5Tool;
 
@@ -41,7 +43,7 @@ import javax.swing.*;
 public class ClientApplication extends Application {
     private Socket socket;
     private ArrayList<Thread> cThreads;
-    private static ObservableList<String> loglist;// 存储服务器收到的信息
+    private ObservableList<String> loglist;// 存储服务器收到的信息
 
     private SimpleDateFormat sdf;
     private final static String TGS_ID = "40501";
@@ -50,12 +52,12 @@ public class ClientApplication extends Application {
     private static String Client_ID; // 客户端生成时随机生成客户端ID,取system当前时间的前5位
     private static String PACK;
     private static String reqPACK;
-    private static String TgsTicket; // TGT
-    private static String VTicket; // VT
+    private  String TgsTicket; // TGT
+    private  String VTicket; // VT
     private static String hashKey; // client hash过后的key
 
-    private static String Kctgs; // AS生成的client与tgs之间的session-key
-    private static String Kcv;    //TGS生成的client与Vserver 之间的session-key
+    private  String Kctgs; // AS生成的client与tgs之间的session-key
+    private  String Kcv;    //TGS生成的client与Vserver 之间的session-key
 
     private static String hostName;
 
@@ -196,8 +198,8 @@ public class ClientApplication extends Application {
                     try {
 
                         Stage logStage = new Stage();
-                        logStage.setWidth(500);
-                        logStage.setHeight(600);
+                        logStage.setWidth(800);
+                        logStage.setHeight(800);
                         logStage.setTitle("authlog");
                         logStage.setScene(setLogField());
                         logStage.show();
@@ -213,48 +215,53 @@ public class ClientApplication extends Application {
             @Override
             public void handle(ActionEvent event) {
                 ClientThread client;
-
-                if (tname.getText().length() < 1) {
+                if (ClientApplication.this.getVTicket() == null) {
                     Alert nameAlert = new Alert(Alert.AlertType.ERROR);
-                    nameAlert.setHeaderText("请输入用户名");
+                    nameAlert.setHeaderText("请先注册");
                     nameAlert.initModality(Modality.APPLICATION_MODAL);
-                    nameAlert.showAndWait();
-                } else if (pass.getText().length() < 1) {
-                    Alert nameAlert = new Alert(Alert.AlertType.ERROR);
-                    nameAlert.setHeaderText("请输入密码");
-                    nameAlert.initModality(Modality.APPLICATION_MODAL);
-                    nameAlert.showAndWait();
-                    System.out.println("请输入密码");
+                    nameAlert.show();
                 } else {
-                    // 建立socket连接
-                    try {
-                        client = new ClientThread(hostname.getText(), Integer.parseInt(port.getText()), tname.getText(),
-                                KbConstants.VSERVER_MODE);
-                        System.out.println(Integer.parseInt(port.getText()));
-                        Thread clientThread = new Thread(client);
-                        cThreads.add(clientThread);
-                        clientThread.start();
-                        Stage chatStage = new Stage();
-
-                        chatStage.setWidth(800);
-                        chatStage.setHeight(700);
-                        chatStage.setTitle("当前用户" + tname.getText());
-                        chatStage.setScene(setChatStage(client));
-                        chatStage.show();
-                        primaryStage.close();
-                    } catch (java.net.ConnectException e) {
+                    if (tname.getText().length() < 1) {
                         Alert nameAlert = new Alert(Alert.AlertType.ERROR);
-                        nameAlert.setHeaderText("服务器未开启");
+                        nameAlert.setHeaderText("请输入用户名");
+                        nameAlert.initModality(Modality.APPLICATION_MODAL);
                         nameAlert.showAndWait();
-                        System.out.println("服务器未开启");
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    } else if (pass.getText().length() < 1) {
+                        Alert nameAlert = new Alert(Alert.AlertType.ERROR);
+                        nameAlert.setHeaderText("请输入密码");
+                        nameAlert.initModality(Modality.APPLICATION_MODAL);
+                        nameAlert.showAndWait();
+                        System.out.println("请输入密码");
+                    } else {
+                        // 建立socket连接
+                        try {
+                            client = new ClientThread(hostname.getText(), Integer.parseInt(port.getText()), tname.getText(),
+                                    KbConstants.VSERVER_MODE, ClientApplication.this);
+                            System.out.println(Integer.parseInt(port.getText()));
+                            Thread clientThread = new Thread(client);
+                            cThreads.add(clientThread);
+                            clientThread.start();
+                            Stage chatStage = new Stage();
+
+                            chatStage.setWidth(800);
+                            chatStage.setHeight(700);
+                            chatStage.setTitle("当前用户" + tname.getText());
+                            chatStage.setScene(setChatStage(client));
+                            chatStage.show();
+                            primaryStage.close();
+                        } catch (java.net.ConnectException e) {
+                            Alert nameAlert = new Alert(Alert.AlertType.ERROR);
+                            nameAlert.setHeaderText("服务器未开启");
+                            nameAlert.showAndWait();
+                            System.out.println("服务器未开启");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
                     }
 
                 }
-
             }
-
         });
 
         return new Scene(gridp);
@@ -266,8 +273,33 @@ public class ClientApplication extends Application {
         GridPane grid = new GridPane();
 
         ListView<String> logArea = new ListView<String>();
+        logArea.setPrefSize(600, 600);
+//        logArea.setFixedCellSize(20);
+//        logArea.autosize();
+        logArea.setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
+            @Override
+            public ListCell<String> call(ListView<String> param) {
+                ListCell<String> cell = new ListCell<String>(){
+                    @Override
+                    protected void updateItem(String item, boolean empty) {
+                        super.updateItem(item, empty);
+
+                        if(!empty&&item!=null&&item!="\r|\n|"&&item!="") {
+                            Label la = new Label();
+                            la.setWrapText(true);
+                            la.setText(item);
+                            la.setPadding(new Insets(10));
+                            la.setStyle("-fx-border-color:green;"+"-fx-border-radius:10px;");
+                            this.setGraphic(la);
+                        }
+                    }
+                };
+                cell.prefWidthProperty().bind(logArea.prefWidthProperty().divide(10));
+                return  cell;
+            }
+        });
         logArea.setItems(loglist);
-        logArea.setPrefSize(400, 500);
+        logArea.refresh();
         Button start = new Button("start");
         start.setOnAction(new EventHandler<ActionEvent>() {
             @Override
@@ -275,8 +307,8 @@ public class ClientApplication extends Application {
 
                 ClientThread client;
                 try {
-                    client = new ClientThread(hostName, Integer.parseInt(KbConstants.AS_Port),
-                            KbConstants.Auth_MODE);
+                    client = new ClientThread(KbConstants.AsAddr, Integer.parseInt(KbConstants.AS_Port),
+                            KbConstants.Auth_MODE,ClientApplication.this);
                     Thread clientThread = new Thread(client);
                     clientThread.setName("AS_SOCKET");
                     cThreads.add(clientThread);
@@ -309,13 +341,62 @@ public class ClientApplication extends Application {
         sendBtn.setPrefSize(80, 40);
 
         Label ipAdress = new Label();
-        ipAdress.setPrefSize(500, 20);
-        ipAdress.setStyle("-fx-background-color:red");
+
+        ipAdress.setPrefSize(50, 20);
+//        ipAdress.setStyle("-fx-background-color:red");
+        TextArea ta = new TextArea();
+        ta.setPrefSize(100,20);
 
         ListView<String> tArea = new ListView<>();
+        tArea.setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
+            @Override
+            public ListCell<String> call(ListView<String> param) {
+                ListCell<String> cell = new ListCell<String>(){
+                    @Override
+                    protected void updateItem(String item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if(!empty&&item!=null&&item!="\r|\n|"&&item!="") {
+                            Label la = new Label();
+                            la.setWrapText(true);
+                            la.setText(item);
+                            la.setPadding(new Insets(10));
+                            la.setStyle("-fx-border-color:green;"+"-fx-border-radius:10px;");
+                            this.setGraphic(la);
+                        }
+                    }
+                };
+                cell.prefWidthProperty().bind(tArea.prefWidthProperty().divide(10));
+                return  cell;
+            }
+        });
         tArea.setItems(client.loglist);
+        tArea.refresh();
         TextArea sendArea = new TextArea();
         ListView<String> recvArea = new ListView<>();
+        recvArea.setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
+            @Override
+            public ListCell<String> call(ListView<String> param) {
+                ListCell<String> cell = new ListCell<String>(){
+                    @Override
+                    protected void updateItem(String item, boolean empty) {
+                        super.updateItem(item, empty);
+
+                        if(empty==false) {
+                            Label la = new Label();
+                            la.setWrapText(true);
+                            la.setText(item);
+                            la.setPadding(new Insets(10));
+                            la.setStyle("-fx-border-color:green;"+"-fx-border-radius:10px;");
+                            this.setGraphic(la);
+                        }
+
+                    }
+                };
+
+                cell.prefWidthProperty().bind(recvArea.prefWidthProperty().divide(10));
+                return  cell;
+            }
+        });
         tArea.setPrefSize(200, 500);
         sendArea.setPrefSize(500, 100);
         recvArea.setPrefSize(500, 400);
@@ -327,10 +408,12 @@ public class ClientApplication extends Application {
         vbox.setPadding(new Insets(10));
         VBox.setMargin(sendArea, new Insets(10, 0, 0, 0));
         VBox.setMargin(sendBtn, new Insets(10, 0, 0, 480));
-
+        HBox hb = new HBox();
+        hb.getChildren().add(ipAdress);
+        hb.getChildren().add(ta);
         BorderPane borderPane = new BorderPane();
         borderPane.setRight(tArea);
-        borderPane.setTop(ipAdress);
+//        borderPane.setTop(hb);
         borderPane.setCenter(vbox);
         BorderPane.setMargin(tArea, new Insets(10, 10, 10, 0));
 
@@ -339,13 +422,19 @@ public class ClientApplication extends Application {
         sendBtn.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-
-                try {
-                    client.writeMessage(sendArea.getText(),ClientApplication.getClient_ID(),client.getName());
-                    System.out.println(sendArea.getText());
-                    sendArea.clear();
-                } catch (Exception e) {
-                    e.printStackTrace();
+                if(sendArea.getText()==""||sendArea.getText()==null) {
+                    Alert nameAlert = new Alert(Alert.AlertType.ERROR);
+                    nameAlert.setHeaderText("服务器未开启");
+                    nameAlert.initModality(Modality.APPLICATION_MODAL);
+                    nameAlert.show();
+                }else {
+                    try {
+                        client.writeMessage(sendArea.getText(), ClientApplication.getClient_ID(), client.getName());
+                        System.out.println(sendArea.getText());
+                        sendArea.clear();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         });
@@ -360,32 +449,32 @@ public class ClientApplication extends Application {
     }
 
 
-    public static ObservableList<String> getLoglist() {
+    public ObservableList<String> getLoglist() {
         return loglist;
     }
 
-    public static String getKctgs() {
+    public  String getKctgs() {
         return Kctgs;
     }
 
-    public static void setKctgs(String kctgs) {
+    public  void setKctgs(String kctgs) {
         Kctgs = kctgs;
     }
 
-    public static String getKcv() {
+    public  String getKcv() {
         return Kcv;
     }
 
-    public static void setKcv(String kcv) {
+    public  void setKcv(String kcv) {
         Kcv = kcv;
     }
 
-    public static String getVTicket() {
+    public  String getVTicket() {
         return VTicket;
     }
 
-    public static void setVTicket(String VTicket) {
-        ClientApplication.VTicket = VTicket;
+    public  void setVTicket(String VTicket) {
+        this.VTicket = VTicket;
     }
 
     public static String getReqPACK() {
@@ -400,11 +489,11 @@ public class ClientApplication extends Application {
         return PACK;
     }
 
-    public static String getTgsTicket() {
+    public  String getTgsTicket() {
         return TgsTicket;
     }
 
-    public static void setTgsTicket(String tgsTicket) {
+    public  void setTgsTicket(String tgsTicket) {
         TgsTicket = tgsTicket;
     }
 

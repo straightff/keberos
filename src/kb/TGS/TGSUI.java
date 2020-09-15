@@ -14,18 +14,16 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextField;
-import javafx.scene.control.Tooltip;
+import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
+import javafx.util.Callback;
 
 public class TGSUI extends Application
 {
@@ -80,8 +78,8 @@ public class TGSUI extends Application
 		ServerInitThread.logArea = new ListView<String>();
 		primaryStage.setTitle("TGS");
 
-		primaryStage.setWidth(500);
-		primaryStage.setHeight(700);
+		primaryStage.setWidth(800);
+		primaryStage.setHeight(800);
 		primaryStage.show();
 		primaryStage.setScene(mainStage());
 		primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>()
@@ -106,7 +104,31 @@ public class TGSUI extends Application
 		GridPane grid = new GridPane();
 
 //		ListView<String> logArea = new ListView<String>();
-		ServerInitThread.logArea.setPrefSize(400, 500);
+		ServerInitThread.logArea.setPrefSize(600, 600);
+		ServerInitThread.logArea.setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
+			@Override
+			public ListCell<String> call(ListView<String> param) {
+				ListCell<String> cell = new ListCell<String>(){
+					@Override
+					protected void updateItem(String item, boolean empty) {
+						super.updateItem(item, empty);
+
+						if(empty==false&&item!=""&&item!="\r|\n") {
+							Label la = new Label();
+							la.setWrapText(true);
+							la.setText(item.trim());
+							la.setPadding(new Insets(10));
+							la.setStyle("-fx-border-color:green;"+"-fx-border-radius:10px;");
+							this.setGraphic(la);
+						}
+
+					}
+				};
+
+				cell.prefWidthProperty().bind(ServerInitThread.logArea.prefWidthProperty().divide(10));
+				return  cell;
+			}
+		});
 
 		Button connect = new Button("Connect");
 

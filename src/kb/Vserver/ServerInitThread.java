@@ -8,7 +8,11 @@ import java.util.ArrayList;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.geometry.Insets;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.util.Callback;
 
 //接受客户端连接并存储进 recvClientMess
 public class ServerInitThread implements Runnable {
@@ -31,6 +35,7 @@ public class ServerInitThread implements Runnable {
         clientThread = new ArrayList<ServerAuthThread>();
         loglist = FXCollections.observableArrayList();
         clientName = FXCollections.observableArrayList();
+
 
         this.ss = new ServerSocket(port);
 

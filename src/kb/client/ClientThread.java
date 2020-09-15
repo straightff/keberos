@@ -29,6 +29,7 @@ public class ClientThread implements Runnable {
     public ObservableList<String> messList;
     public ObservableList<String> loglist;
     private int mode;
+    private ClientApplication cli;
 
     // 读消息
     @Override
@@ -56,7 +57,7 @@ public class ClientThread implements Runnable {
                         for (String message : messages) {
                             System.out.println(message);
                         }
-                        messList.add(mess);
+
 //                        String packDesDecode = null;
                         try {
 //                            packDesDecode = DesTool.decrypt(messages[1], ClientApplication.getVTicket());
@@ -67,7 +68,9 @@ public class ClientThread implements Runnable {
                             String[] Mess = unPack(packRsaDecode);
                             Platform.runLater(()->
                             {
-                                messList.add("clientID:" + Mess[0] + " Addr:" + Mess[2] + " user:" + Mess[1]+" time:"+Mess[4]+" Message:"+Mess[3]);
+                                messList.add("收到的加密包为:\n"+mess);
+                                messList.add("clientID:" + Mess[0] + "\tAddr:" + Mess[2] + "\ttime:"+Mess[4]);
+                                messList.add("user"+Mess[1]+"\tMessage:"+Mess[3]);
                             });
 
                         } catch (Exception e) {
@@ -88,10 +91,11 @@ public class ClientThread implements Runnable {
     }
 
     // 初始化建立连接
-    public ClientThread(String hostName, int port, String name, int mode) throws UnknownHostException, IOException {
+    public ClientThread(String hostName, int port, String name, int mode,ClientApplication cli) throws UnknownHostException, IOException {
 
         socket = new Socket(hostName, port);
-
+        this.cli = cli;
+//        this.cli = new ClientApplication();
         br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         os = socket.getOutputStream();
         messList = FXCollections.observableArrayList();//消息列表
@@ -100,10 +104,10 @@ public class ClientThread implements Runnable {
         this.mode = mode;
     }
 
-    public ClientThread(String hostName, int port, int mode) throws UnknownHostException, IOException {
+    public ClientThread(String hostName, int port, int mode,ClientApplication cli) throws UnknownHostException, IOException {
 
         socket = new Socket(hostName, port);
-
+        this.cli = cli;
         br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         os = socket.getOutputStream();
         messList = FXCollections.observableArrayList();//消息列表
@@ -114,8 +118,11 @@ public class ClientThread implements Runnable {
     // AS 认证过程，请求得到tgsticket保存
     private void AS_auth() throws IOException {
         //发包
+        Platform.runLater(()->cli.getLoglist().add("AS认证开始!"));
         String send_pack = KbConstants.C_AS + KbConstants.SEP + ClientApplication.getClient_ID() + KbConstants.SEP + ClientApplication.getTgsId()
                 + KbConstants.SEP + ClientApplication.getTimeStamp() ; // 将要发送的数据包
+        Platform.runLater(()->cli.getLoglist().add("C-->AS发送的包为：\n"+send_pack));
+
         writeAuthMess(send_pack, os);
         try {
             String recvPackEncode = recvAuthMess(br);
@@ -124,17 +131,25 @@ public class ClientThread implements Runnable {
             String[] keys = unPack(KbConstants.C_PriKEY);
             String recvPack = RsaTool.deCode(keys[0],keys[1],recvPackEncode);
             System.out.println("recvPack is" + recvPack);
+            Platform.runLater(()->
+            {
+                cli.getLoglist().add("AS-->C收到的包为：\n"+recvPack);
+
+            });
 
             String[] clientMess = recvPack.split("-");
-            for (String a : clientMess) {
-                System.out.println(a);
-            }
+            Platform.runLater(()->{
+                cli.getLoglist().add("解包后的信息为:");
+                for (String mess : clientMess) {
+                    cli.getLoglist().add(mess);
+                }
+            });
             //存储tgsTicket
-            ClientApplication.setTgsTicket(clientMess[6]);
-            ClientApplication.getLoglist().add("Tgs TGT:" + clientMess[6]);
+            cli.setTgsTicket(clientMess[6]);
+//            ClientApplication.getLoglist().add("Tgs TGT:" + clientMess[6]);
 
             //存储c_tgs
-            ClientApplication.setKctgs(clientMess[1]);
+            cli.setKctgs(clientMess[1]);
 
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -150,45 +165,50 @@ public class ClientThread implements Runnable {
     private void TGS_auth() throws Exception {
 
         //建立与TGS的socket连接
-        Socket TGSsocket = new Socket(ClientApplication.getHostName(), 7777);
+        Socket TGSsocket = new Socket(KbConstants.TgsAddr, 7777);
         OutputStream TGSos = TGSsocket.getOutputStream();
 
         BufferedReader TGSbr = new BufferedReader(new InputStreamReader(TGSsocket.getInputStream()));
 
-        Platform.runLater(() -> ClientApplication.getLoglist().add("TGS auth begin!"));
+        Platform.runLater(() -> cli.getLoglist().add("TGS 认证开始!"));
         //发包
         String Auth = ClientApplication.getClient_ID() + KbConstants.SEP + TGSsocket.getLocalAddress().toString()
                 + KbConstants.SEP + ClientApplication.getTimeStamp();
 //        String[] recv = ClientApplication.getClientMess();
-        System.out.println(ClientApplication.getKctgs());
-        String Auth_encoded = DesTool.encrypt(Auth, ClientApplication.getKctgs());
+        System.out.println(cli.getKctgs());
+        String Auth_encoded = DesTool.encrypt(Auth, cli.getKctgs());
         String pack = KbConstants.C_TGS + KbConstants.SEP + ClientApplication.getVserverId() + KbConstants.SEP
-                + ClientApplication.getTgsTicket() + KbConstants.SEP + Auth_encoded + KbConstants.SEP + ClientApplication.getKctgs();
+                + cli.getTgsTicket() + KbConstants.SEP + Auth_encoded + KbConstants.SEP + cli.getKctgs();
 
         //由于加密函数没有在后面添加结束标志位，因此，在这里添加 ‘=’ 作为包结束的标志
         writeAuthMess(pack, TGSos);
-        Platform.runLater(() -> ClientApplication.getLoglist().add("C-->TGS:" + pack));
+        Platform.runLater(() -> cli.getLoglist().add("C-->TGS发的包为" + pack));
 
 
         //收包
         String recvPackEncode = recvAuthMess(TGSbr);
-        Platform.runLater(() -> ClientApplication.getLoglist().add("收到来自TGS的包"));
+        Platform.runLater(() -> cli.getLoglist().add("收到来自TGS的包"));
 
 
         //解密
-        String recvPack = DesTool.decrypt(recvPackEncode, ClientApplication.getKctgs());
-
+        String recvPack = DesTool.decrypt(recvPackEncode, cli.getKctgs());
+        Platform.runLater(()->cli.getLoglist().add("TGS-->C收到的包为:"+recvPack));
         //解包
         String[] clientMess = unPack(recvPack);
-
+        Platform.runLater(()->{
+            cli.getLoglist().add("解包后的信息为:");
+            for (String mess : clientMess) {
+                cli.getLoglist().add(mess);
+            }
+        });
         String Kcv = clientMess[1];
         String ticketV = clientMess[4];
 
         //存储ticketV
-        ClientApplication.setVTicket(ticketV);
-        ClientApplication.setKcv(Kcv);
-        //todo 添加到client的loglist
-        Platform.runLater(() -> ClientApplication.getLoglist().add("ticketV:" + ticketV));
+        cli.setVTicket(ticketV);
+        cli.setKcv(Kcv);
+
+//        Platform.runLater(() -> ClientApplication.getLoglist().add("ticketV:" + ticketV));？
         TGSos.close();
         TGSbr.close();
 
@@ -197,34 +217,36 @@ public class ClientThread implements Runnable {
 
     private void VServer_auth() throws Exception {
 
+        Platform.runLater(() -> cli.getLoglist().add("Vserver 认证开始!"));
         //建立与server的socket连接
-        Socket Vsocket = new Socket(ClientApplication.getHostName(), 8888);
+        Socket Vsocket = new Socket(KbConstants.VsAddr, 8888);
         OutputStream VSos = Vsocket.getOutputStream();
         BufferedReader Vbr = new BufferedReader(new InputStreamReader(Vsocket.getInputStream()));
 
         //发包
-        String Kcv = ClientApplication.getKcv();
+        String Kcv = cli.getKcv();
 
         String TS = ClientApplication.getTimeStamp();
         String AuthContent = ClientApplication.getClient_ID() + KbConstants.SEP + socket.getLocalAddress().toString() + KbConstants.SEP + TS;
         String AuthEncode = DesTool.encrypt(AuthContent, Kcv);
-        String pack = KbConstants.C_V + KbConstants.SEP + ClientApplication.getVTicket() + KbConstants.SEP + AuthEncode;
+        String pack = KbConstants.C_V + KbConstants.SEP + cli.getVTicket() + KbConstants.SEP + AuthEncode;
+        Platform.runLater(()->loglist.add("C-->V发的包为:\n"+pack));
         writeAuthMess(pack, VSos);
 
 
         //收包
         String recvPackEncode = recvAuthMess(Vbr);
-        Platform.runLater(() -> ClientApplication.getLoglist().add("V-->C:" + recvPackEncode));
+        Platform.runLater(() -> cli.getLoglist().add("V-->C发的包为:\n" + recvPackEncode));
 
 
-        String recvPack = DesTool.decrypt(recvPackEncode, ClientApplication.getKcv());
+        String recvPack = DesTool.decrypt(recvPackEncode, cli.getKcv());
         String[] clientMess = unPack(recvPack);
         for (String mess : clientMess) {
             System.out.println(mess);
         }
 
         if (clientMess[1].equals(TS + 1)) {
-            Platform.runLater(() -> ClientApplication.getLoglist().add("认证成功"));
+            Platform.runLater(() -> cli.getLoglist().add("认证成功"));
         }
         VSos.close();
         Vbr.close();
@@ -257,6 +279,7 @@ public class ClientThread implements Runnable {
         //rsa加密
         String mess = RsaTool.enCode(key[0],key[1],pack);
         Platform.runLater(()->{
+            loglist.add("未加密的pack为:\n"+pack);
             loglist.add("消息经过Vserver的公钥加密:"+mess);
         });
         //再套外面的des加密

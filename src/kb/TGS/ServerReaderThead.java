@@ -55,98 +55,101 @@ public class ServerReaderThead implements Runnable {
 
 
         String mess = recvAuthMess();
-        Platform.runLater(() -> server.getLoglist().add("C-->TGS:"+mess));
+        Platform.runLater(() -> server.getLoglist().add("C-->TGS 接收的包为:\n" + mess));
         System.out.println(mess);
         System.out.println("got!");
         //C-tgs无加密。解密步骤注释
 //		String mess_decode = DesTool.decrypt(mess_encode,)
         String[] clientMess = unPack(mess);
 
-        //todo 检查kdc数据库之中是否存在 Vserver的注册ID 不存在返回错误信息 继续下面的验证步骤
 
-
-        //todo 从数据库获取tgs的key tgskey
         SqliteTool sql = new SqliteTool("ServerMess");
 
-        String tgskey = sql.searchOneFromTable(TGSUI.getTgsId(),"ServerRegist","KEY");
-        String Vkey = sql.searchOneFromTable(TGSUI.getVserverId(),"ServerRegist","KEY");
+        String tgskey = sql.searchOneFromTable(TGSUI.getTgsId(), "ServerRegist", "KEY");
+        String Vkey = sql.searchOneFromTable(TGSUI.getVserverId(), "ServerRegist", "KEY");
 
         //todo 从数据库获取c-tgs session-key
         System.out.println(tgskey);
-        for(String a:clientMess){
-            System.out.println(a);
-        }
+        Platform.runLater(() -> {
+            server.getLoglist().add("解包如下:");
+            for (String a : clientMess) {
+                server.getLoglist().add(a);
+            }
+        });
 
-        System.out.println("client Mess:"+clientMess[2]+" "+clientMess[2].length());
+
+        System.out.println("client Mess:" + clientMess[2] + " " + clientMess[2].length());
         String[] ticketMess = unPack(DesTool.decrypt(clientMess[2], tgskey));
         //解密之后可获得Kctgs
         String Kctgs = clientMess[4];
         System.out.println("1111");
         System.out.println(DesTool.decrypt(clientMess[3], Kctgs));
         String[] AuthMess = unPack(DesTool.decrypt(clientMess[3], Kctgs));
-        System.out.println("client Mess:"+clientMess[3]+" "+clientMess[3].length());
-        for(String a:AuthMess){
+        System.out.println("client Mess:" + clientMess[3] + " " + clientMess[3].length());
+        for (String a : AuthMess) {
             System.out.println(a);
         }
         Boolean flag = true;
         String head = " ";
-		/*
-		while(true) {
-			//比较Auth 与kctgs之间的 IDc
-			if (!ticketMess[1].equals(AuthMess[1])) {
-				flag = false;
-				//todo 常量类error
-				head = " ";
-				break;
-			}
-			//比较Auth 与 系统时间戳TS
-			if(caculateTS(AuthMess[2],TGSUI.getTimeStamp())>30)
-			{
-				flag = false;
-				//todo 常量类system TS error
-				head = " ";
-				break;
-			}
-			//比较lifetime
-			if(caculateTS(AuthMess[2],TGSUI.getTimeStamp())>Integer.parseInt(AuthMess[2]))
-			{
-				flag = false;
-				//todo 常量类lifetime error
-				head = " ";
-				break;
-			}
-			//比较Auth 与kctgs之间的 ADc
-			if(AuthMess[1].equals(ticketMess[2]))
-			{
-				flag = false;
-				//todo 常量类error
-				head = " ";
-				break;
-			}
-			//检查tgs数据库中是否已存在Auth
-			if(isAlreadExist(clientMess[3]))
-			{
-				flag = false;
-				//todo 常量类error
-				head = " ";
-				break;
-			}
-			else {
-				flag = true;
-				head = " ";
-				break;
-			}
-		}
-		*/
+
+        while (true) {
+            //比较Auth 与kctgs之间的 IDc
+            if (!ticketMess[1].equals(AuthMess[1])) {
+                flag = false;
+                //todo 常量类error
+                head = KbConstants.TGS_C_ERROR;
+                break;
+            }
+            //比较Auth 与 系统时间戳TS
+            if (caculateTS(AuthMess[2], TGSUI.getTimeStamp()) > 30) {
+                flag = false;
+                //todo 常量类system TS error
+                head = KbConstants.TGS_C_ERROR;
+                break;
+            }
+            //比较lifetime
+            if (caculateTS(AuthMess[2], TGSUI.getTimeStamp()) > Integer.parseInt(AuthMess[2])) {
+                flag = false;
+                //todo 常量类lifetime error
+                head = KbConstants.TGS_C_ERROR;
+                break;
+            }
+            //比较Auth 与kctgs之间的 ADc
+            if (AuthMess[1].equals(ticketMess[2])) {
+                flag = false;
+                //todo 常量类error
+                head = KbConstants.TGS_C_ERROR;
+                break;
+            }
+            //检查tgs数据库中是否已存在Auth
+            if (isAlreadExist(clientMess[3])) {
+                flag = false;
+                //todo 常量类error
+                head = KbConstants.TGS_C_ERROR;
+                break;
+            } else {
+                flag = true;
+                head = KbConstants.TGS_C;
+                break;
+            }
+        }
+
 
 //        ServerKeyGenerator sk = new ServerKeyGenerator();
         //返回包
         String Kcv = RandomKeyTool.createAuth(clientMess[1], TGSUI.getVserverId());
-        String ticketVContent = Kcv + KbConstants.SEP + AuthMess[0] + KbConstants.SEP + AuthMess[1] + KbConstants.SEP + TGSUI.getVserverId() +KbConstants.SEP+ TGSUI.getTimeStamp()+KbConstants.SEP + TGSUI.getLifetime();
+        String ticketVContent = Kcv + KbConstants.SEP + AuthMess[0] + KbConstants.SEP + AuthMess[1] + KbConstants.SEP + TGSUI.getVserverId() + KbConstants.SEP + TGSUI.getTimeStamp() + KbConstants.SEP + TGSUI.getLifetime();
+
         String ticketVEncoded = DesTool.encrypt(ticketVContent, Vkey);
         String pack = head + KbConstants.SEP + Kcv + KbConstants.SEP + TGSUI.getVserverId() + KbConstants.SEP + TGSUI.getTimeStamp() + KbConstants.SEP + ticketVEncoded;
         String packEncode = DesTool.encrypt(pack, Kctgs);
 
+        Platform.runLater(() -> {
+            server.getLoglist().add("ticketV打包后的内容为：\n" + ticketVContent);
+            server.getLoglist().add("ticketV加密后的内容为：\n" + ticketVEncoded);
+            server.getLoglist().add("整体打包后的内容为：\n" + pack);
+            server.getLoglist().add("加密后的内容为：\n" + packEncode);
+        });
         return packEncode;
     }
 
@@ -165,7 +168,7 @@ public class ServerReaderThead implements Runnable {
         }
 
         int nDay = (int) ((TSDATE2.getTime() - TSDATE1.getTime()));
-        return nDay;
+        return nDay/60;
     }
 
     //接收认证消息
