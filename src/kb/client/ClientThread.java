@@ -70,7 +70,7 @@ public class ClientThread implements Runnable {
                             {
                                 messList.add("收到的加密包为:\n"+mess);
                                 messList.add("clientID:" + Mess[0] + "\tAddr:" + Mess[2] + "\ttime:"+Mess[4]);
-                                messList.add("user"+Mess[1]+"\tMessage:"+Mess[3]);
+                                messList.add("user: "+Mess[1]+"\tMessage: "+Mess[3]);
                             });
 
                         } catch (Exception e) {
@@ -230,13 +230,13 @@ public class ClientThread implements Runnable {
         String AuthContent = ClientApplication.getClient_ID() + KbConstants.SEP + socket.getLocalAddress().toString() + KbConstants.SEP + TS;
         String AuthEncode = DesTool.encrypt(AuthContent, Kcv);
         String pack = KbConstants.C_V + KbConstants.SEP + cli.getVTicket() + KbConstants.SEP + AuthEncode;
-        Platform.runLater(()->loglist.add("C-->V发的包为:\n"+pack));
+        Platform.runLater(()->cli.getLoglist().add("C-->V 发的包为:\n"+pack));
         writeAuthMess(pack, VSos);
 
 
         //收包
         String recvPackEncode = recvAuthMess(Vbr);
-        Platform.runLater(() -> cli.getLoglist().add("V-->C发的包为:\n" + recvPackEncode));
+        Platform.runLater(() -> cli.getLoglist().add("V-->C 收的包为:\n" + recvPackEncode));
 
 
         String recvPack = DesTool.decrypt(recvPackEncode, cli.getKcv());
