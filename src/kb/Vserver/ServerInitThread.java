@@ -8,16 +8,12 @@ import java.util.ArrayList;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
-import javafx.util.Callback;
 
 //接受客户端连接并存储进 recvClientMess
 public class ServerInitThread implements Runnable {
     private static ArrayList<Socket> recvClientSocket;// 存储接受客户端消息的socket表
-    private static ArrayList<ServerAuthThread> clientThread;// 存储处理客户端信息读取线程的Thread表
+    private static ArrayList<ServerAuthAndReadThread> clientThread;// 存储处理客户端信息读取线程的Thread表
     private ObservableList<String> loglist;// 存储服务器收到的信息
     private ObservableList<String> clientName;// 存储客户端名称
     private static ArrayList<ClientBean> client; //存储客户端的信息Bean
@@ -32,7 +28,7 @@ public class ServerInitThread implements Runnable {
         super();
         client = new ArrayList<>();
         recvClientSocket = new ArrayList<Socket>();
-        clientThread = new ArrayList<ServerAuthThread>();
+        clientThread = new ArrayList<ServerAuthAndReadThread>();
         loglist = FXCollections.observableArrayList();
         clientName = FXCollections.observableArrayList();
 
@@ -59,7 +55,7 @@ public class ServerInitThread implements Runnable {
                     }
                 });
                 recvClientSocket.add(socket);
-                ServerAuthThread sat = new ServerAuthThread(socket, this);
+                ServerAuthAndReadThread sat = new ServerAuthAndReadThread(socket, this);
                 Thread rThread = new Thread(sat);
                 System.out.println("第"+i+"个线程");
 //                ServerInitThread.getClientThread().add(sat);
@@ -85,7 +81,7 @@ public class ServerInitThread implements Runnable {
 //            clientThread.get(i).writeMessage(input, clientid, userName, ts);
 //        }
         int i=0;
-        for (ServerAuthThread srt : clientThread) {
+        for (ServerAuthAndReadThread srt : clientThread) {
 //            if(i%2==0)
 //            {
 //                ++i;
@@ -108,11 +104,11 @@ public class ServerInitThread implements Runnable {
 //        }
 //    }
 
-    public static void setClientThread(ArrayList<ServerAuthThread> clientThread) {
+    public static void setClientThread(ArrayList<ServerAuthAndReadThread> clientThread) {
         ServerInitThread.clientThread = clientThread;
     }
 
-    public static ArrayList<ServerAuthThread> getClientThread() {
+    public static ArrayList<ServerAuthAndReadThread> getClientThread() {
         return clientThread;
     }
 

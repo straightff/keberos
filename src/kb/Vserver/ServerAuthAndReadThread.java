@@ -20,7 +20,7 @@ import kb.ToolClass.DesTool;
 import sun.security.krb5.internal.crypto.Des;
 
 //读取客户端消息
-public class ServerAuthThread implements Runnable {
+public class ServerAuthAndReadThread implements Runnable {
     private Socket socket;
     private BufferedReader br;
     private OutputStream os;
@@ -28,7 +28,7 @@ public class ServerAuthThread implements Runnable {
     private static String mode;
     private static boolean isAuth = false;
 
-    public ServerAuthThread(Socket socket, ServerInitThread Server) throws IOException {
+    public ServerAuthAndReadThread(Socket socket, ServerInitThread Server) throws IOException {
         mode = "111";
         this.socket = socket;
         server = Server;
